@@ -14,7 +14,7 @@ Instead, it establishes a **robust technical bridge** enabling:
 - execution of Python code in a Jupyter kernel that may interact directly with a running DataLab instance,
 - documentation, narration, and sharing of analyses while preserving the power of the GUI.
 
-This document complements the user-facing specification (`spec.md`) by describing **intent and architectural principles**, not user contracts.
+This document complements the user-facing specification (`plans/specification.md`) by describing **intent and architectural principles**, not user contracts.
 
 ---
 
@@ -152,7 +152,7 @@ It is a **structural extension** of DataLab toward open science workflows.
 By separating:
 
 - *vision* (this document),
-- *user contract* (`spec.md`),
+- *user contract* (`plans/specification.md`),
 - *implementation choices* (left open),
 
 DataLab can evolve incrementally while preserving clarity, stability, and scientific credibility.
