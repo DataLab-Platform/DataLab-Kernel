@@ -697,9 +697,9 @@ class Workspace:
             ValueError: If object exists and overwrite=False
         """
         self._backend.add(name, obj, overwrite=overwrite)
-        # For live backend, allow brief retry window for object to appear
-        # This handles potential race conditions with XML-RPC
-        for _ in range(5):
+        # For live backend, allow retry window for object to appear
+        # This handles race conditions with XML-RPC (especially on Python 3.9)
+        for _ in range(20):
             try:
                 return self._backend.get(name)
             except KeyError:
