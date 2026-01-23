@@ -390,7 +390,7 @@ class TestWorkspaceResync:
         # Mock: This test would need DataLab to be stopped
         # For now, we just verify the method exists and can be called
         # The actual behavior depends on whether DataLab is running
-        result = workspace.resync()
+        _result = workspace.resync()
 
         # If DataLab is running, it will succeed; otherwise False
         # Either way, the workspace should still be functional
