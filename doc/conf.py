@@ -72,7 +72,7 @@ html_theme_options = {
 html_static_path = ["_static"]
 
 # -- Options for LaTeX output ------------------------------------------------
-latex_logo = "_static/DataLab-Kernel-Banner.png"
+latex_logo = "_static/DataLab-Kernel-Banner.svg"
 
 # -- Options for sphinx-intl package -----------------------------------------
 locale_dirs = ["locale/"]
