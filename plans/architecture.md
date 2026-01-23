@@ -20,7 +20,7 @@ This document complements the user-facing specification (`plans/specification.md
 
 ## 2. User-Centric Target Scenario
 
-> A researcher at the CEA uses DataLab to load experimental data from the **Laser Mégajoule (LMJ)**.
+> A researcher uses DataLab to load experimental data from the lab.
 > From the GUI, they start an embedded Jupyter server that launches a **DataLab kernel**.
 > They open a notebook (locally or remotely) connected to this kernel and write:
 >
