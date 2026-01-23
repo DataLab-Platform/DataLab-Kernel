@@ -26,17 +26,17 @@ The kernel follows a clean architectural pattern with three main components:
 .. code-block:: text
 
     ┌─────────────────────────────────────────────────────────┐
-    │                    Jupyter Notebook                      │
-    │                                                          │
+    │                    Jupyter Notebook                     │
+    │                                                         │
     │  from datalab_kernel import Workspace, Plotter          │
-    │  workspace = Workspace()                                 │
+    │  workspace = Workspace()                                │
     │  plotter = Plotter(workspace)                           │
     └─────────────────────────────────────────────────────────┘
                               │
                               ▼
     ┌─────────────────────────────────────────────────────────┐
-    │                     Workspace API                        │
-    │                                                          │
+    │                     Workspace API                       │
+    │                                                         │
     │  • add(), get(), remove(), rename()                     │
     │  • list(), exists(), clear()                            │
     │  • save(), load() (HDF5 persistence)                    │
