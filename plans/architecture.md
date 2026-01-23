@@ -20,9 +20,13 @@ This document complements the user-facing specification (`plans/specification.md
 
 ## 2. User-Centric Target Scenario
 
-> A researcher uses DataLab to load experimental data from the lab.
-> From the GUI, they start an embedded Jupyter server that launches a **DataLab kernel**.
-> They open a notebook (locally or remotely) connected to this kernel and write:
+> A researcher uses DataLab to load and explore experimental data from the lab.
+> Using the graphical interface, they inspect signals and images, apply standard processing operations, and identify the data they want to work on.
+>
+> When they decide to continue the analysis programmatically, they open a Jupyter notebook associated with the current analysis context.
+>
+> The notebook starts in an execution environment that provides direct access to the DataLab workspace.
+> The researcher writes the following code:
 >
 > ```python
 > img = workspace.get("i042")
@@ -34,13 +38,15 @@ This document complements the user-facing specification (`plans/specification.md
 > When executing the cell:
 >
 > - the processed image appears **inline in the notebook**,
-> - **and simultaneously in the DataLab GUI**,
+> - **and simultaneously in the DataLab interface (when available)**,
 > - with views and metadata updated consistently.
 >
 > The notebook is then shared with a colleague, who can:
 >
-> - reproduce the analysis **without launching DataLab** (standalone mode),
-> - or resume the workflow in the GUI by opening the associated DataLab project.
+> - reproduce the analysis using the notebook alone (without DataLab installed),
+> - or resume and extend the workflow in the DataLab graphical interface by opening the associated project.
+>
+> When needed, a notebook can be opened to continue the analysis programmatically, using the same execution environment and data context.
 
 This scenario combines:
 
