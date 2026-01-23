@@ -1,0 +1,89 @@
+# This workflow installs dependencies, starts DataLab, and runs tests with live mode
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Test with Live DataLab
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    env:
+      DISPLAY: ':99.0'
+
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+          libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xfixes0 \
+          libxcb-shape0 libegl1 libgl1-mesa-glx x11-utils
+
+    - name: Start Xvfb
+      run: |
+        /sbin/start-stop-daemon --start --quiet \
+          --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background \
+          --exec /usr/bin/Xvfb -- :99 -screen 0 1920x1200x24 -ac +extension GLX
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install ruff pytest pytest-cov
+        python -m pip install PyQt5
+
+    - name: Install DataLab and dependencies
+      run: |
+        if [ "${{ github.ref_name }}" = "develop" ]; then
+          # Clone and install development versions
+          cd ..
+          git clone --depth 1 https://github.com/PlotPyStack/PythonQwt.git
+          git clone --depth 1 --branch develop https://github.com/PlotPyStack/guidata.git
+          git clone --depth 1 --branch develop https://github.com/PlotPyStack/plotpy.git
+          git clone --depth 1 --branch develop https://github.com/DataLab-Platform/sigima.git
+          git clone --depth 1 --branch develop https://github.com/DataLab-Platform/DataLab.git
+          cd DataLab-Kernel
+          pip install -e ../guidata
+          pip install -e ../PythonQwt
+          pip install -e ../plotpy
+          pip install -e ../sigima
+          pip install -e ../DataLab
+        else
+          # Install from PyPI for main branch
+          pip install datalab-platform
+        fi
+
+    - name: Install DataLab-Kernel
+      run: |
+        # Install without deps (we already have them)
+        pip install -e . --no-deps
+        # Install remaining deps from pyproject.toml
+        pip install ipykernel jupyter-client numpy h5py matplotlib
+
+    - name: Lint with Ruff
+      run: ruff check --output-format=github datalab_kernel
+
+    - name: Run unit tests
+      run: pytest datalab_kernel/tests/unit datalab_kernel/tests/contract -v --tb=long
+
+    - name: Run live integration tests
+      run: |
+        # Run integration tests with DataLab auto-start
+        pytest --live --start-datalab datalab_kernel/tests/integration -v --tb=long
