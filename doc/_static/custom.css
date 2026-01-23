@@ -1,0 +1,16 @@
+/* Custom CSS for DataLab-Kernel documentation */
+
+/* Dark/light mode support for images */
+.dark-light {
+    filter: invert(0);
+}
+
+html[data-theme="dark"] .dark-light {
+    filter: invert(1);
+}
+
+/* Remove scaling on logo */
+.no-scaled-link img {
+    max-width: 100%;
+    height: auto;
+}
