@@ -17,6 +17,7 @@ The backend is selected automatically at kernel startup.
 from __future__ import annotations
 
 import os
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from enum import Enum
@@ -696,6 +697,13 @@ class Workspace:
             ValueError: If object exists and overwrite=False
         """
         self._backend.add(name, obj, overwrite=overwrite)
+        # For live backend, allow brief retry window for object to appear
+        # This handles potential race conditions with XML-RPC
+        for _ in range(5):
+            try:
+                return self._backend.get(name)
+            except KeyError:
+                time.sleep(0.1)
         return self._backend.get(name)
 
     def remove(self, name: str) -> None:
