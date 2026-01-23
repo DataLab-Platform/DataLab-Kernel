@@ -79,9 +79,7 @@ class TestSignalObj:
 
     def test_signal_repr(self):
         """Verify signal repr."""
-        signal = create_signal(
-            "test", np.array([1, 2, 3]), np.array([4, 5, 6])
-        )
+        signal = create_signal("test", np.array([1, 2, 3]), np.array([4, 5, 6]))
 
         repr_str = repr(signal)
 

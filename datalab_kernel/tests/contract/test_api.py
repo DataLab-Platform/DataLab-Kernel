@@ -160,7 +160,9 @@ class TestH5Reproducibility:
         """Saved .h5 files ensure full reproducibility."""
         # Create and populate workspace
         workspace1 = Workspace(backend=StandaloneBackend())
-        sig = create_signal("signal", np.linspace(0, 10, 100), np.sin(np.linspace(0, 10, 100)))
+        sig = create_signal(
+            "signal", np.linspace(0, 10, 100), np.sin(np.linspace(0, 10, 100))
+        )
         img = create_image("image", np.random.rand(64, 64).astype(np.float32))
         workspace1.add("signal", sig)
         workspace1.add("image", img)
@@ -193,7 +195,9 @@ class TestDataIntegrity:
     def test_add_creates_copy(self):
         """Adding an object creates an independent copy."""
         workspace = Workspace(backend=StandaloneBackend())
-        original = create_signal("test", np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0]))
+        original = create_signal(
+            "test", np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])
+        )
 
         workspace.add("test", original)
 
