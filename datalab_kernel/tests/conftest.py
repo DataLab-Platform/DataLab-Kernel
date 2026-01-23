@@ -48,11 +48,13 @@ def pytest_collection_modifyitems(config, items):
 
 
 # Global process handle for DataLab
+# pylint: disable=invalid-name
 _datalab_process = None
 
 
 def _is_datalab_running():
     """Check if DataLab is running and accessible."""
+    # pylint: disable=import-outside-toplevel
     try:
         from datalab.control.proxy import RemoteProxy
 
@@ -60,13 +62,13 @@ def _is_datalab_running():
         proxy.connect(timeout=2.0)
         proxy.disconnect()
         return True
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         return False
 
 
 def _start_datalab():
     """Start DataLab in background."""
-    global _datalab_process
+    global _datalab_process  # pylint: disable=global-statement
 
     if _is_datalab_running():
         return  # Already running
@@ -77,6 +79,7 @@ def _start_datalab():
 
     # Start DataLab in background
     # Note: This may not work if DataLab requires display or has other issues
+    # pylint: disable=consider-using-with
     _datalab_process = subprocess.Popen(
         [sys.executable, "-m", "datalab.app"],
         env=env,
@@ -92,7 +95,8 @@ def _start_datalab():
         if _datalab_process.poll() is not None:
             stdout, stderr = _datalab_process.communicate()
             raise RuntimeError(
-                f"DataLab process exited immediately with code {_datalab_process.returncode}.\n"
+                f"DataLab process exited immediately with code "
+                f"{_datalab_process.returncode}.\n"
                 f"stdout: {stdout.decode('utf-8', errors='replace')[:500]}\n"
                 f"stderr: {stderr.decode('utf-8', errors='replace')[:500]}\n"
                 "Try starting DataLab manually before running tests."
@@ -109,9 +113,10 @@ def _start_datalab():
 
 def _stop_datalab():
     """Stop DataLab if we started it."""
-    global _datalab_process
+    global _datalab_process  # pylint: disable=global-statement
 
     if _datalab_process is not None:
+        # pylint: disable=import-outside-toplevel
         try:
             from datalab.control.proxy import RemoteProxy
 
@@ -119,7 +124,7 @@ def _stop_datalab():
             proxy.connect(timeout=2.0)
             proxy.close_application()
             proxy.disconnect()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             # Force kill if close_application fails
             _datalab_process.kill()
         finally:
@@ -128,6 +133,7 @@ def _stop_datalab():
 
 def _close_datalab_session():
     """Close DataLab session via proxy (regardless of who started it)."""
+    # pylint: disable=import-outside-toplevel
     try:
         from datalab.control.proxy import RemoteProxy
 
@@ -135,7 +141,7 @@ def _close_datalab_session():
         proxy.connect(timeout=2.0)
         proxy.close_application()
         proxy.disconnect()
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass  # DataLab may already be closed or not running
 
 

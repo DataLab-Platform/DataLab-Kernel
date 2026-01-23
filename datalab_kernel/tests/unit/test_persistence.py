@@ -7,6 +7,7 @@ Unit tests for Workspace persistence (HDF5)
 
 Tests save/load functionality.
 """
+# pylint: disable=import-outside-toplevel
 
 from __future__ import annotations
 

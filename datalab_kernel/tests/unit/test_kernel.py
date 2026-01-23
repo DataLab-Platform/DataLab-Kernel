@@ -7,6 +7,7 @@ Unit tests for kernel components
 
 Tests kernel registration, startup, and namespace initialization.
 """
+# pylint: disable=import-outside-toplevel
 
 from __future__ import annotations
 

@@ -94,6 +94,7 @@ class TestModeTransparency:
         plotter = Plotter(workspace)
 
         # Execute canonical code
+        # pylint: disable=exec-used
         exec(
             CANONICAL_CODE,
             {

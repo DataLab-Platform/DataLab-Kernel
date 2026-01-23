@@ -103,10 +103,9 @@ class PlotResult:
 
         if obj_type == "SignalObj":
             return self._signal_to_html()
-        elif obj_type == "ImageObj":
+        if obj_type == "ImageObj":
             return self._image_to_html()
-        else:
-            return f"<div><strong>{title}</strong>: {obj_type}</div>"
+        return f"<div><strong>{title}</strong>: {obj_type}</div>"
 
     def _repr_png_(self) -> bytes:
         """Return PNG representation for Jupyter display."""
@@ -124,7 +123,7 @@ class PlotResult:
                 <img src="data:image/png;base64,{b64_data}" />
             </div>
             """
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return f"<div>Error rendering signal: {e}</div>"
 
     def _image_to_html(self) -> str:
@@ -139,11 +138,13 @@ class PlotResult:
                 <img src="data:image/png;base64,{b64_data}" />
             </div>
             """
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             return f"<div>Error rendering image: {e}</div>"
 
     def _render_to_png(self) -> bytes:
         """Render object to PNG bytes using matplotlib."""
+        # Delayed import: matplotlib is optional and heavy
+        # pylint: disable=import-outside-toplevel
         import matplotlib
 
         matplotlib.use("Agg")

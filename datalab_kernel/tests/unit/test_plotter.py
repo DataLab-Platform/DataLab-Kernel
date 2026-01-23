@@ -7,6 +7,7 @@ Unit tests for Plotter API
 
 Tests visualization capabilities in standalone mode.
 """
+# pylint: disable=protected-access
 
 from __future__ import annotations
 

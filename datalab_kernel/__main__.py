@@ -23,8 +23,12 @@ def main() -> None:
         install_main()
     else:
         # Launch kernel (default behavior when run by Jupyter)
-        from ipykernel.kernelapp import IPKernelApp
+        # Delayed import: only needed when launching as kernel
+        from ipykernel.kernelapp import (  # pylint: disable=import-outside-toplevel
+            IPKernelApp,
+        )
 
+        # pylint: disable-next=import-outside-toplevel
         from datalab_kernel.kernel import DataLabKernel
 
         IPKernelApp.launch_instance(kernel_class=DataLabKernel)

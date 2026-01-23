@@ -176,7 +176,8 @@ class StandaloneBackend(WorkspaceBackend):
         Args:
             filepath: Path to save file (should end with .h5)
         """
-        import h5py
+        # Delayed import: h5py is optional for HDF5 persistence
+        import h5py  # pylint: disable=import-outside-toplevel
 
         # Ensure .h5 extension
         if not filepath.endswith(".h5"):
@@ -251,7 +252,8 @@ class StandaloneBackend(WorkspaceBackend):
         Raises:
             FileNotFoundError: If file doesn't exist
         """
-        import h5py
+        # Delayed import: h5py is optional for HDF5 persistence
+        import h5py  # pylint: disable=import-outside-toplevel
 
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File not found: {filepath}")
@@ -269,18 +271,19 @@ class StandaloneBackend(WorkspaceBackend):
 
         if obj_type == "SignalObj":
             return self._load_signal(grp, name)
-        elif obj_type == "ImageObj":
+        if obj_type == "ImageObj":
             return self._load_image(grp, name)
-        else:
-            # Try to infer type from data
-            if "x" in grp and "y" in grp:
-                return self._load_signal(grp, name)
-            elif "data" in grp:
-                return self._load_image(grp, name)
+        # Try to infer type from data
+        if "x" in grp and "y" in grp:
+            return self._load_signal(grp, name)
+        if "data" in grp:
+            return self._load_image(grp, name)
         return None
 
     def _load_signal(self, grp, name: str) -> DataObject:
         """Load a SignalObj from an HDF5 group."""
+        # Conditional import: prefer sigima, fallback to local objects
+        # pylint: disable=import-outside-toplevel
         try:
             from sigima import SignalObj
         except ImportError:
@@ -307,6 +310,8 @@ class StandaloneBackend(WorkspaceBackend):
 
     def _load_image(self, grp, name: str) -> DataObject:
         """Load an ImageObj from an HDF5 group."""
+        # Conditional import: prefer sigima, fallback to local objects
+        # pylint: disable=import-outside-toplevel
         try:
             from sigima import ImageObj
         except ImportError:
@@ -352,13 +357,15 @@ class LiveBackend(WorkspaceBackend):
 
     def _connect(self) -> None:
         """Connect to DataLab instance."""
+        # Conditional import: datalab is optional dependency
+        # pylint: disable=import-outside-toplevel
         try:
             from datalab.control.proxy import RemoteProxy
 
             self._proxy = RemoteProxy()
             # Test connection by getting version
             self._proxy.get_version()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             self._proxy = None
             raise ConnectionError("Failed to connect to DataLab instance") from e
 
@@ -390,7 +397,7 @@ class LiveBackend(WorkspaceBackend):
             sig_titles = self.proxy.get_object_titles(panel="signal")
             if title in sig_titles:
                 return "signal"
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # Check images
@@ -398,7 +405,7 @@ class LiveBackend(WorkspaceBackend):
             img_titles = self.proxy.get_object_titles(panel="image")
             if title in img_titles:
                 return "image"
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         return None
@@ -415,14 +422,14 @@ class LiveBackend(WorkspaceBackend):
         try:
             sig_titles = self.proxy.get_object_titles(panel="signal")
             titles.extend(sig_titles)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # Get image titles
         try:
             img_titles = self.proxy.get_object_titles(panel="image")
             titles.extend(img_titles)
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         return titles
@@ -444,7 +451,7 @@ class LiveBackend(WorkspaceBackend):
             sig_titles = self.proxy.get_object_titles(panel="signal")
             if name in sig_titles:
                 return self.proxy.get_object(name, panel="signal")
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # Try to find in images
@@ -452,7 +459,7 @@ class LiveBackend(WorkspaceBackend):
             img_titles = self.proxy.get_object_titles(panel="image")
             if name in img_titles:
                 return self.proxy.get_object(name, panel="image")
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         raise KeyError(f"Object '{name}' not found in DataLab workspace")
@@ -504,7 +511,9 @@ class LiveBackend(WorkspaceBackend):
             self.proxy.call_method("remove_object", force=True)
         elif "remove_object" in self.proxy.get_method_list():
             # Direct XML-RPC call if server exposes it
+            # pylint: disable=protected-access
             self.proxy._datalab.remove_object(True)  # noqa: SLF001
+            # pylint: enable=protected-access
         else:
             raise NotImplementedError(
                 "Individual object removal requires DataLab 1.1+. "
@@ -618,7 +627,7 @@ class Workspace:
         try:
             backend = LiveBackend()
             return backend, WorkspaceMode.LIVE
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
         # Fallback to standalone
@@ -641,7 +650,7 @@ class Workspace:
         # Try to connect to DataLab
         try:
             new_backend = LiveBackend()
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             return False
 
         # Transfer objects from standalone to live backend
@@ -843,8 +852,7 @@ class Workspace:
         mode_str = self._mode.value
         if count == 0:
             return f"Workspace({mode_str}, empty)"
-        elif count <= 5:
+        if count <= 5:
             return f"Workspace({mode_str}, objects=[{', '.join(names)}])"
-        else:
-            shown = ", ".join(names[:5])
-            return f"Workspace({mode_str}, objects=[{shown}, ...] ({count} total))"
+        shown = ", ".join(names[:5])
+        return f"Workspace({mode_str}, objects=[{shown}, ...] ({count} total))"

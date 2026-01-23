@@ -7,6 +7,7 @@ Unit tests for kernel installation
 
 Tests kernel install/uninstall functionality.
 """
+# pylint: disable=import-outside-toplevel
 
 from __future__ import annotations
 

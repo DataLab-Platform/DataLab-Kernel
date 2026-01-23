@@ -47,6 +47,8 @@ def get_kernel_dir(user: bool = True) -> Path:
     Returns:
         Path to kernel directory
     """
+    # Delayed import to avoid dependency at module load time
+    # pylint: disable=import-outside-toplevel
     from jupyter_client.kernelspec import KernelSpecManager
 
     ksm = KernelSpecManager()
@@ -115,9 +117,8 @@ def uninstall_kernel(user: bool = True, prefix: str | None = None) -> bool:
         shutil.rmtree(kernel_dir)
         print(f"Uninstalled DataLab kernel from: {kernel_dir}")
         return True
-    else:
-        print(f"DataLab kernel not found at: {kernel_dir}")
-        return False
+    print(f"DataLab kernel not found at: {kernel_dir}")
+    return False
 
 
 def main() -> None:

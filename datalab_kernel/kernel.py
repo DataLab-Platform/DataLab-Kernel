@@ -72,6 +72,8 @@ class DataLabKernel(IPythonKernel):
         ns["workspace"] = workspace
         ns["plotter"] = plotter
 
+        # Delayed imports for optional dependencies and namespace injection
+        # pylint: disable=import-outside-toplevel
         # Add numpy as np (common convention)
         import numpy as np
 
@@ -110,6 +112,6 @@ class DataLabKernel(IPythonKernel):
 
 # Entry point for kernel launch
 if __name__ == "__main__":
-    from ipykernel.kernelapp import IPKernelApp
+    from ipykernel.kernelapp import IPKernelApp  # pylint: disable=ungrouped-imports
 
     IPKernelApp.launch_instance(kernel_class=DataLabKernel)

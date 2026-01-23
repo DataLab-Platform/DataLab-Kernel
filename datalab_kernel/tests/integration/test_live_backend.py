@@ -7,6 +7,7 @@ Integration tests for LiveBackend with a running DataLab instance.
 These tests verify that the LiveBackend correctly communicates with
 DataLab via the RemoteProxy XML-RPC interface.
 """
+# pylint: disable=redefined-outer-name,unused-argument,import-outside-toplevel
 
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ def require_datalab():
         proxy = RemoteProxy(autoconnect=False)
         proxy.connect(timeout=2.0)
         proxy.disconnect()
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pytest.skip("DataLab not running or not available")
 
 

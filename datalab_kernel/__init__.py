@@ -31,8 +31,10 @@ from datalab_kernel.plotter import Plotter
 from datalab_kernel.workspace import Workspace
 
 # Global instances (initialized when kernel starts)
+# pylint: disable=invalid-name
 workspace: Workspace | None = None
 plotter: Plotter | None = None
+# pylint: enable=invalid-name
 
 __all__ = [
     "__version__",
