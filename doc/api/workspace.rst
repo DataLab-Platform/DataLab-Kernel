@@ -5,11 +5,6 @@ Workspace
 
 The ``Workspace`` class is the central API for managing data objects.
 
-.. automodule:: datalab_kernel.workspace
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 WorkspaceMode
 -------------
 

@@ -44,7 +44,6 @@ suppress_warnings = ["config.cache"]
 html_theme = "pydata_sphinx_theme"
 html_title = project
 html_logo = "_static/DataLab-Kernel-Banner.svg"
-html_favicon = "_static/favicon.ico"
 html_show_sourcelink = False
 
 html_theme_options = {
@@ -91,6 +90,6 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "sigima": ("https://sigima.readthedocs.io/en/latest/", None),
-    "datalab": ("https://datalab-platform.readthedocs.io/en/latest/", None),
+    "datalab": ("https://datalab-platform.com/en/", None),
     "ipykernel": ("https://ipykernel.readthedocs.io/en/stable/", None),
 }

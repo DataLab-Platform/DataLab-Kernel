@@ -93,6 +93,25 @@
                 "cwd": "${workspaceFolder}"
             },
             "group": "build"
+        },
+        {
+            "label": "📚 Build documentation",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "-m",
+                "sphinx",
+                "build",
+                "doc",
+                "build/doc",
+                "-b",
+                "html",
+                "-W"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "build"
         }
     ]
 }
