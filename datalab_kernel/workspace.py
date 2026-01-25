@@ -485,14 +485,28 @@ class LiveBackend(WorkspaceBackend):
         # Set the title on the object
         obj.title = name
 
-        # add_object auto-detects panel based on object type
+        # Determine which panel the object will be added to
+        from sigima import SignalObj  # pylint: disable=import-outside-toplevel
+
+        panel = "signal" if isinstance(obj, SignalObj) else "image"
+
+        # add_object uses cross-thread Qt signals - it returns before the signal
+        # is processed by the main thread. We must poll until the object appears.
         self.proxy.add_object(obj)
 
-        # Force synchronization: add_object uses Qt signals without @remote_call
-        # decorator, so it returns before the object is actually added.
-        # Calling get_current_panel() (which has @remote_call) forces the Qt event
-        # loop to process pending signals including SIG_ADD_OBJECT.
-        self.proxy.get_current_panel()
+        # Wait for object to appear (cross-thread signal processing)
+        # On slow CI (Python 3.9), the signal may take time to be processed
+        for _ in range(100):  # 10 seconds total timeout
+            try:
+                titles = self.proxy.get_object_titles(panel=panel)
+                if name in titles:
+                    return  # Object successfully added
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+            time.sleep(0.1)
+
+        # If we get here, the add failed (shouldn't happen normally)
+        raise RuntimeError(f"Timeout waiting for object '{name}' to appear in DataLab")
 
     def remove(self, name: str) -> None:
         """Remove an object from the workspace.
@@ -821,14 +835,7 @@ class Workspace:
             ValueError: If object exists and overwrite=False
         """
         self._backend.add(name, obj, overwrite=overwrite)
-        # For live backend, allow retry window for object to appear
-        # This handles race conditions with XML-RPC (especially on Python 3.9)
-        if isinstance(self._backend, LiveBackend):
-            for _ in range(50):  # 5 seconds total timeout
-                try:
-                    return self._backend.get(name)
-                except KeyError:
-                    time.sleep(0.1)
+        # LiveBackend.add() waits for the object to appear, so get() should work
         return self._backend.get(name)
 
     def remove(self, name: str) -> None:
