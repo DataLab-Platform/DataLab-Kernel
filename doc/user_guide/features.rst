@@ -170,8 +170,7 @@ Full access to Sigima's data objects:
 
 .. code-block:: python
 
-    from datalab_kernel.objects import SignalObj, ImageObj
-    from datalab_kernel.objects import create_signal, create_image
+    from sigima import SignalObj, ImageObj, create_signal, create_image
 
     # Create rich data objects
     signal = create_signal(

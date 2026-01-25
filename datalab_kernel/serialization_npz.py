@@ -35,10 +35,9 @@ import zipfile
 from typing import TYPE_CHECKING
 
 import numpy as np
+from sigima import ImageObj, SignalObj
 
 if TYPE_CHECKING:
-    from sigima.objects import ImageObj, SignalObj
-
     DataObject = SignalObj | ImageObj
 
 
@@ -158,11 +157,6 @@ def _read_array_from_zip(zf: zipfile.ZipFile, name: str) -> np.ndarray | None:
 
 def _deserialize_signal(zf: zipfile.ZipFile, metadata: dict) -> DataObject:
     """Deserialize a SignalObj from NPZ archive."""
-    try:
-        from sigima import SignalObj
-    except ImportError:
-        from datalab_kernel.objects import SignalObj
-
     x = _read_array_from_zip(zf, "x.npy")
     y = _read_array_from_zip(zf, "y.npy")
     dx = _read_array_from_zip(zf, "dx.npy")
@@ -190,11 +184,6 @@ def _deserialize_signal(zf: zipfile.ZipFile, metadata: dict) -> DataObject:
 
 def _deserialize_image(zf: zipfile.ZipFile, metadata: dict) -> DataObject:
     """Deserialize an ImageObj from NPZ archive."""
-    try:
-        from sigima import ImageObj
-    except ImportError:
-        from datalab_kernel.objects import ImageObj
-
     data = _read_array_from_zip(zf, "data.npy")
     if data is None:
         raise ValueError("Invalid image NPZ: missing data.npy")

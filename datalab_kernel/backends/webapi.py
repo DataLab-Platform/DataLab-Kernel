@@ -44,9 +44,9 @@ try:
 except ImportError:
     HTTPX_AVAILABLE = False
 
-if TYPE_CHECKING:
-    from sigima.objects import ImageObj, SignalObj
+from sigima import ImageObj, SignalObj
 
+if TYPE_CHECKING:
     DataObject = SignalObj | ImageObj
 
 
@@ -472,11 +472,6 @@ class WebApiBackend:
         obj_type = grp.attrs.get("type", "unknown")
 
         if obj_type == "SignalObj" or ("x" in grp and "y" in grp):
-            try:
-                from sigima import SignalObj
-            except ImportError:
-                from datalab_kernel.objects import SignalObj
-
             x = np.array(grp["x"])
             y = np.array(grp["y"])
             dx = np.array(grp["dx"]) if "dx" in grp else None
@@ -488,11 +483,6 @@ class WebApiBackend:
             return obj
 
         if obj_type == "ImageObj" or "data" in grp:
-            try:
-                from sigima import ImageObj
-            except ImportError:
-                from datalab_kernel.objects import ImageObj
-
             data = np.array(grp["data"])
             obj = ImageObj()
             obj.data = data

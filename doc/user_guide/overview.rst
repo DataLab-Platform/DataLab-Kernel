@@ -152,7 +152,7 @@ DataLab-Kernel re-exports Sigima's data objects:
 
 .. code-block:: python
 
-    from datalab_kernel.objects import create_signal
+    from sigima import create_signal
 
     signal = create_signal(
         "My Signal",
@@ -165,7 +165,7 @@ DataLab-Kernel re-exports Sigima's data objects:
 
 .. code-block:: python
 
-    from datalab_kernel.objects import create_image
+    from sigima import create_image
 
     image = create_image(
         "My Image",

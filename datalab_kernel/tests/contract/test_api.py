@@ -17,7 +17,7 @@ import tempfile
 import numpy as np
 import pytest
 
-from datalab_kernel.objects import create_image, create_signal
+from sigima import create_image, create_signal
 from datalab_kernel.plotter import Plotter
 from datalab_kernel.workspace import StandaloneBackend, Workspace
 

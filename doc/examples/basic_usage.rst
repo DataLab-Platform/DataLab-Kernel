@@ -11,7 +11,7 @@ Creating a Workspace
 .. code-block:: python
 
     from datalab_kernel import Workspace, Plotter
-    from datalab_kernel.objects import create_signal, create_image
+    from sigima import create_signal, create_image
     import numpy as np
 
     # Create workspace (auto-detects DataLab)

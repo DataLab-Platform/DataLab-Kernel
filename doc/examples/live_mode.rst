@@ -17,7 +17,7 @@ Connecting to DataLab
 .. code-block:: python
 
     from datalab_kernel import Workspace, Plotter, WorkspaceMode
-    from datalab_kernel.objects import create_signal
+    from sigima import create_signal
     import numpy as np
 
     # Create workspace - auto-connects if DataLab is running

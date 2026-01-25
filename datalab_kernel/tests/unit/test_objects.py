@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from datalab_kernel.objects import (
+from sigima import (
     ImageObj,
     SignalObj,
     create_image,

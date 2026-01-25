@@ -24,10 +24,9 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 import numpy as np
+from sigima import ImageObj, SignalObj
 
 if TYPE_CHECKING:
-    from sigima.objects import ImageObj, SignalObj
-
     DataObject = SignalObj | ImageObj
 
 
@@ -282,13 +281,6 @@ class StandaloneBackend(WorkspaceBackend):
 
     def _load_signal(self, grp, name: str) -> DataObject:
         """Load a SignalObj from an HDF5 group."""
-        # Conditional import: prefer sigima, fallback to local objects
-        # pylint: disable=import-outside-toplevel
-        try:
-            from sigima import SignalObj
-        except ImportError:
-            from datalab_kernel.objects import SignalObj
-
         x = np.array(grp["x"])
         y = np.array(grp["y"])
         dx = np.array(grp["dx"]) if "dx" in grp else None
@@ -310,13 +302,6 @@ class StandaloneBackend(WorkspaceBackend):
 
     def _load_image(self, grp, name: str) -> DataObject:
         """Load an ImageObj from an HDF5 group."""
-        # Conditional import: prefer sigima, fallback to local objects
-        # pylint: disable=import-outside-toplevel
-        try:
-            from sigima import ImageObj
-        except ImportError:
-            from datalab_kernel.objects import ImageObj
-
         data = np.array(grp["data"])
 
         obj = ImageObj()
@@ -486,8 +471,6 @@ class LiveBackend(WorkspaceBackend):
         obj.title = name
 
         # Determine which panel the object will be added to
-        from sigima import SignalObj  # pylint: disable=import-outside-toplevel
-
         panel = "signal" if isinstance(obj, SignalObj) else "image"
 
         # add_object uses cross-thread Qt signals - it returns before the signal

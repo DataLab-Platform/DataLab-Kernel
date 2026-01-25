@@ -16,10 +16,6 @@ scientific data processing in Jupyter notebooks.
     * - :mod:`datalab_kernel`
       - Main entry point with ``Workspace``, ``Plotter``, and ``WorkspaceMode``
 
-    * - :mod:`datalab_kernel.objects`
-      - Data objects (``SignalObj``, ``ImageObj``) and creation functions
-        (``create_signal``, ``create_image``) - re-exported from Sigima
-
     * - :mod:`datalab_kernel.workspace`
       - Workspace implementation with backend abstraction
 
@@ -29,5 +25,4 @@ scientific data processing in Jupyter notebooks.
    :caption: API Modules:
 
    workspace
-   objects
    plotter

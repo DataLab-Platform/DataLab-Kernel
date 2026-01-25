@@ -18,6 +18,7 @@ from ipykernel.ipkernel import IPythonKernel
 from datalab_kernel import __version__
 from datalab_kernel.plotter import Plotter
 from datalab_kernel.workspace import Workspace
+from sigima import create_image, create_signal
 
 
 class DataLabKernel(IPythonKernel):
@@ -88,8 +89,6 @@ class DataLabKernel(IPythonKernel):
             pass
 
         # Add convenience functions
-        from datalab_kernel.objects import create_image, create_signal
-
         ns["create_signal"] = create_signal
         ns["create_image"] = create_image
 

@@ -87,15 +87,15 @@ class TestNamespaceAvailability:
         assert Plotter is not None
 
     def test_objects_importable(self):
-        """Verify object classes are importable."""
-        from datalab_kernel.objects import ImageObj, SignalObj
+        """Verify object classes are importable from Sigima."""
+        from sigima import ImageObj, SignalObj
 
         assert SignalObj is not None
         assert ImageObj is not None
 
     def test_create_functions_importable(self):
-        """Verify create functions are importable."""
-        from datalab_kernel.objects import create_image, create_signal
+        """Verify create functions are importable from Sigima."""
+        from sigima import create_image, create_signal
 
         assert callable(create_signal)
         assert callable(create_image)

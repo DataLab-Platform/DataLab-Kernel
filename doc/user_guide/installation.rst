@@ -83,7 +83,7 @@ Check that the kernel is properly installed:
 .. code-block:: python
 
     from datalab_kernel import Workspace, Plotter
-    from datalab_kernel.objects import create_signal
+    from sigima import create_signal
     import numpy as np
 
     # Create workspace
