@@ -495,8 +495,9 @@ class LiveBackend(WorkspaceBackend):
         self.proxy.add_object(obj)
 
         # Wait for object to appear (cross-thread signal processing)
-        # On slow CI (Python 3.9), the signal may take time to be processed
-        for _ in range(100):  # 10 seconds total timeout
+        # On slow CI, the first add can trigger lazy initialization that takes
+        # 15+ seconds on Python 3.13. Use 60s timeout to be safe.
+        for _ in range(600):  # 60 seconds total timeout
             try:
                 titles = self.proxy.get_object_titles(panel=panel)
                 if name in titles:
