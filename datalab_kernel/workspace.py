@@ -502,8 +502,15 @@ class LiveBackend(WorkspaceBackend):
         if panel is None:
             raise KeyError(f"Object '{name}' not found")
 
-        # Select the object by title and remove it
-        self.proxy.select_objects([name], panel=panel)
+        # Get object titles to find the 1-based index
+        titles = self.proxy.get_object_titles(panel=panel)
+        try:
+            obj_num = titles.index(name) + 1  # 1-based index
+        except ValueError:
+            raise KeyError(f"Object '{name}' not found") from None
+
+        # Select the object by number (1-based index) and remove it
+        self.proxy.select_objects([obj_num], panel=panel)
 
         # Try different methods depending on DataLab version
         # DataLab 1.1+ has call_method, older versions don't support individual remove
