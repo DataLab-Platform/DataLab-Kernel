@@ -475,29 +475,38 @@ class LiveBackend(WorkspaceBackend):
 
         # add_object uses cross-thread Qt signals - it returns before the signal
         # is processed by the main thread. We must poll until the object appears.
-        self.proxy.add_object(obj)
-
-        # Wait for object to appear (cross-thread signal processing)
-        # On slow CI, the first add can trigger lazy initialization that takes
-        # 15+ seconds on Python 3.13. Use 60s timeout to be safe.
         #
-        # We also verify the object is retrievable via get_object(), not just
-        # that it appears in titles. This avoids race conditions where the title
-        # appears but the object isn't fully ready for retrieval yet.
-        for _ in range(600):  # 60 seconds total timeout
-            try:
-                titles = self.proxy.get_object_titles(panel=panel)
-                if name in titles:
-                    # Double-check object is actually retrievable
-                    # This catches race conditions where title appears before
-                    # the object is fully indexed
-                    self.proxy.get_object(name, panel=panel)
-                    return  # Object successfully added and retrievable
-            except Exception:  # pylint: disable=broad-exception-caught
-                pass
-            time.sleep(0.1)
+        # On slow CI (especially Python 3.9), the first add can trigger lazy
+        # initialization that takes a long time. We use a retry strategy:
+        # - Try add_object() up to 3 times with increasing timeouts
+        # - This handles cases where the Qt signal gets lost or delayed
+        add_attempts = 3
+        poll_intervals = [200, 300, 300]  # Number of 0.1s polls per attempt
 
-        # If we get here, the add failed (shouldn't happen normally)
+        for attempt in range(add_attempts):
+            self.proxy.add_object(obj)
+
+            # Give Qt event loop time to process the signal before polling
+            time.sleep(0.5)
+
+            # Poll for the object to appear
+            poll_count = poll_intervals[attempt]
+            for _ in range(poll_count):
+                try:
+                    titles = self.proxy.get_object_titles(panel=panel)
+                    if name in titles:
+                        # Double-check object is actually retrievable
+                        # This catches race conditions where title appears before
+                        # the object is fully indexed
+                        self.proxy.get_object(name, panel=panel)
+                        return  # Object successfully added and retrievable
+                except Exception:  # pylint: disable=broad-exception-caught
+                    pass
+                time.sleep(0.1)
+
+            # Object didn't appear, will retry add_object() on next iteration
+
+        # If we get here after all attempts, the add truly failed
         raise RuntimeError(f"Timeout waiting for object '{name}' to appear in DataLab")
 
     def remove(self, name: str) -> None:
