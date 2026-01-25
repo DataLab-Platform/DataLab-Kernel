@@ -260,7 +260,10 @@ def datalab_instance(request):
 
 
 @pytest.fixture(scope="session")
-def webapi_backend(request, datalab_instance):
+def webapi_backend(
+    request,
+    datalab_instance,  # pylint: disable=unused-argument,redefined-outer-name
+):
     """Session-scoped fixture providing a WebApiBackend connected to DataLab.
 
     This fixture:
@@ -268,6 +271,9 @@ def webapi_backend(request, datalab_instance):
     - Returns a WebApiBackend instance connected to DataLab
 
     Requires --webapi flag to run.
+
+    Note: datalab_instance is required as a dependency to ensure DataLab
+    is running before this fixture runs, even though it's not directly used.
     """
     if not request.config.getoption("--webapi"):
         pytest.skip("Need --webapi option to run")

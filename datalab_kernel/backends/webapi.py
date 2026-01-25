@@ -114,6 +114,11 @@ class WebApiBackend:
         # Verify connection
         self._verify_connection()
 
+    @property
+    def base_url(self) -> str:
+        """Return the base URL of the DataLab Web API."""
+        return self._base_url
+
     def _verify_connection(self) -> None:
         """Verify connection to the DataLab server."""
         try:

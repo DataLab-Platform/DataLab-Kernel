@@ -177,6 +177,7 @@ class TestWebApiBackendHelpers:
         ]
 
         for original, expected in test_cases:
+            # pylint: disable=protected-access
             result = backend._encode_name(original)
             assert result == expected, f"Expected {expected!r}, got {result!r}"
 
@@ -227,6 +228,7 @@ class TestWorkspaceBackendSelection:
 
         ws = Workspace()
         assert ws.mode == WorkspaceMode.STANDALONE
+        # pylint: disable=protected-access
         assert isinstance(ws._backend, StandaloneBackend)
 
     def test_forced_standalone_mode(self, monkeypatch):
@@ -239,6 +241,7 @@ class TestWorkspaceBackendSelection:
 
         ws = Workspace()
         assert ws.mode == WorkspaceMode.STANDALONE
+        # pylint: disable=protected-access
         assert isinstance(ws._backend, StandaloneBackend)
 
     def test_status_method(self, monkeypatch):

@@ -761,8 +761,8 @@ class Workspace:
         }
 
         # Add connection info for WebAPI backend
-        if hasattr(self._backend, "_base_url"):
-            result["url"] = self._backend._base_url
+        if hasattr(self._backend, "base_url"):
+            result["url"] = self._backend.base_url
 
         return result
 
