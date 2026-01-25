@@ -14,11 +14,11 @@ This module implements the Jupyter kernel for DataLab, providing:
 from __future__ import annotations
 
 from ipykernel.ipkernel import IPythonKernel
+from sigima import create_image, create_signal
 
 from datalab_kernel import __version__
 from datalab_kernel.plotter import Plotter
 from datalab_kernel.workspace import Workspace
-from sigima import create_image, create_signal
 
 
 class DataLabKernel(IPythonKernel):

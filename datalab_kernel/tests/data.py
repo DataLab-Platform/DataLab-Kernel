@@ -11,7 +11,6 @@ Provides functions to create test signals and images.
 from __future__ import annotations
 
 import numpy as np
-
 from sigima import ImageObj, SignalObj, create_image, create_signal
 
 

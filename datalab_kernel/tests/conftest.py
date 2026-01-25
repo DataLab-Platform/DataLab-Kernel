@@ -20,7 +20,9 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "standalone: tests for standalone mode only")
     config.addinivalue_line("markers", "live: tests requiring live DataLab instance")
     config.addinivalue_line("markers", "contract: contract tests for both modes")
-    config.addinivalue_line("markers", "integration: integration tests with external services")
+    config.addinivalue_line(
+        "markers", "integration: integration tests with external services"
+    )
     config.addinivalue_line("markers", "webapi: tests requiring WebAPI backend")
 
 

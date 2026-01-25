@@ -196,13 +196,13 @@ class TestWebApiBackendHelpers:
 
         # Should not match
         invalid_cases = [
-            "s01",       # Not enough digits
-            "s0001",     # Too many digits
-            "x001",      # Wrong prefix
-            "signal1",   # Not a short ID
-            "",          # Empty
-            "s",         # Just letter
-            "001",       # Just numbers
+            "s01",  # Not enough digits
+            "s0001",  # Too many digits
+            "x001",  # Wrong prefix
+            "signal1",  # Not a short ID
+            "",  # Empty
+            "s",  # Just letter
+            "001",  # Just numbers
         ]
         for case in invalid_cases:
             match = re.match(pattern, case.lower())

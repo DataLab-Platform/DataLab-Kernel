@@ -167,8 +167,7 @@ class WebApiBackend:
                 raise
             except Exception:
                 raise RuntimeError(
-                    f"DataLab server error (HTTP 500). "
-                    f"URL: {response.request.url}"
+                    f"DataLab server error (HTTP 500). URL: {response.request.url}"
                 ) from None
 
         response.raise_for_status()
