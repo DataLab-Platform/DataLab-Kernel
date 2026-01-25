@@ -356,7 +356,7 @@ class TestWebApiBackendSpecialCharacters:
 
     def test_short_id_resolution(self, webapi_backend):
         """Test that short IDs (s001, i001) resolve to object names."""
-        from sigima import SignalObj, ImageObj
+        from sigima import ImageObj, SignalObj
 
         # Create test objects
         signal = SignalObj()
