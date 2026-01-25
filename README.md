@@ -71,6 +71,11 @@ Depending on the execution context:
 - The kernel detects DataLab at runtime.
 - Workspace operations and visualizations are synchronized with the GUI.
 
+Two connection methods are supported:
+
+- **Web API** (recommended): HTTP/JSON connection using `DATALAB_WORKSPACE_URL` and `DATALAB_WORKSPACE_TOKEN` environment variables
+- **XML-RPC** (legacy): Automatic connection when DataLab is running with remote control enabled
+
 ### Standalone Mode (Notebook-only)
 
 - The kernel is used like any standard Jupyter kernel.

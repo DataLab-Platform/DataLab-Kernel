@@ -622,13 +622,46 @@ class Workspace:
             self._backend, self._mode = self._auto_detect_backend()
 
     def _auto_detect_backend(self) -> tuple[WorkspaceBackend, WorkspaceMode]:
-        """Auto-detect and create appropriate backend."""
-        # Try to connect to DataLab
+        """Auto-detect and create appropriate backend.
+
+        Priority order:
+        1. WebAPI backend if DATALAB_WORKSPACE_URL is set
+        2. XML-RPC LiveBackend if DataLab is running
+        3. StandaloneBackend (fallback)
+        """
+        # Check kernel mode environment variable
+        kernel_mode = os.environ.get("DATALAB_KERNEL_MODE", "auto").lower()
+
+        if kernel_mode == "standalone":
+            return StandaloneBackend(), WorkspaceMode.STANDALONE
+
+        # Try WebAPI first (if URL is set)
+        webapi_url = os.environ.get("DATALAB_WORKSPACE_URL")
+        if webapi_url:
+            try:
+                from datalab_kernel.backends.webapi import WebApiBackend
+
+                backend = WebApiBackend()
+                return backend, WorkspaceMode.LIVE
+            except Exception:  # pylint: disable=broad-exception-caught
+                if kernel_mode == "live":
+                    # User explicitly requested live mode, raise error
+                    raise ConnectionError(
+                        "Failed to connect to DataLab Web API. "
+                        "Check DATALAB_WORKSPACE_URL and DATALAB_WORKSPACE_TOKEN."
+                    ) from None
+                # Fall through to try XML-RPC
+
+        # Try XML-RPC LiveBackend
         try:
             backend = LiveBackend()
             return backend, WorkspaceMode.LIVE
         except Exception:  # pylint: disable=broad-exception-caught
-            pass
+            if kernel_mode == "live":
+                raise ConnectionError(
+                    "Failed to connect to DataLab. "
+                    "Ensure DataLab is running with remote control enabled."
+                ) from None
 
         # Fallback to standalone
         return StandaloneBackend(), WorkspaceMode.STANDALONE
@@ -663,6 +696,75 @@ class Workspace:
         self._backend = new_backend
         self._mode = WorkspaceMode.LIVE
         return True
+
+    def connect(self, url: str | None = None, token: str | None = None) -> bool:
+        """Connect to DataLab Web API.
+
+        Attempts to establish a connection to DataLab using the Web API.
+        If currently in standalone mode with objects, they will be
+        transferred to the DataLab workspace.
+
+        Args:
+            url: DataLab Web API URL (e.g., "http://127.0.0.1:8080").
+                If None, reads from DATALAB_WORKSPACE_URL.
+            token: Authentication token. If None, reads from DATALAB_WORKSPACE_TOKEN.
+
+        Returns:
+            True if connected successfully, False otherwise.
+
+        Example::
+
+            # Connect using environment variables
+            workspace.connect()
+
+            # Connect with explicit credentials
+            workspace.connect("http://127.0.0.1:8080", "my-token")
+        """
+        if self._mode == WorkspaceMode.LIVE:
+            return True  # Already connected
+
+        try:
+            from datalab_kernel.backends.webapi import WebApiBackend
+
+            new_backend = WebApiBackend(base_url=url, token=token)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"Failed to connect: {e}")
+            return False
+
+        # Transfer objects from standalone to live backend
+        old_backend = self._backend
+        for name in old_backend.list():
+            obj = old_backend.get(name)
+            new_backend.add(name, obj)
+
+        # Switch backends
+        self._backend = new_backend
+        self._mode = WorkspaceMode.LIVE
+        return True
+
+    def status(self) -> dict:
+        """Get current workspace status.
+
+        Returns:
+            Dictionary with mode, backend type, and connection info.
+
+        Example::
+
+            >>> workspace.status()
+            {'mode': 'live', 'backend': 'WebApiBackend', 'url': 'http://127.0.0.1:8080'}
+        """
+        backend_name = type(self._backend).__name__
+        result = {
+            "mode": self._mode.value,
+            "backend": backend_name,
+            "object_count": len(self.list()),
+        }
+
+        # Add connection info for WebAPI backend
+        if hasattr(self._backend, "_base_url"):
+            result["url"] = self._backend._base_url
+
+        return result
 
     @property
     def mode(self) -> WorkspaceMode:

@@ -85,6 +85,33 @@ Check your current mode:
         print("Running standalone")
 
 
+Connecting via Web API
+----------------------
+
+DataLab-Kernel supports two connection methods:
+
+**Web API** (recommended for new projects)
+
+Set environment variables before starting your notebook:
+
+.. code-block:: bash
+
+    export DATALAB_WORKSPACE_URL=http://127.0.0.1:8080
+    export DATALAB_WORKSPACE_TOKEN=<your-token>
+
+Then start your notebook. The workspace will automatically connect via HTTP/JSON.
+
+**XML-RPC** (legacy)
+
+If no Web API URL is set but DataLab is running with remote control enabled,
+the workspace will connect via XML-RPC automatically.
+
+.. note::
+
+    Web API is the recommended connection method as it supports WASM/Pyodide
+    environments and provides more efficient binary data transfer via NPZ format.
+
+
 Switching to Live Mode
 ----------------------
 

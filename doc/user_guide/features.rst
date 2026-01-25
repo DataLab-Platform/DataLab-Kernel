@@ -23,6 +23,49 @@ Dual Operating Modes
 - GUI feedback for all operations
 
 
+Connection Methods
+------------------
+
+**Web API** (recommended)
+
+Connect via HTTP/JSON using environment variables:
+
+.. code-block:: bash
+
+    export DATALAB_WORKSPACE_URL=http://127.0.0.1:8080
+    export DATALAB_WORKSPACE_TOKEN=<your-token>
+
+Features:
+
+- WASM/Pyodide compatible
+- Efficient NPZ binary format for data transfer
+- Bearer token authentication
+- Modern REST API
+
+**XML-RPC** (legacy)
+
+Automatic connection when DataLab is running with remote control enabled.
+No configuration required.
+
+**Environment Variables**
+
+.. list-table::
+   :header-rows: 1
+
+   * - Variable
+     - Description
+     - Default
+   * - ``DATALAB_WORKSPACE_URL``
+     - Web API server URL
+     - (none)
+   * - ``DATALAB_WORKSPACE_TOKEN``
+     - Web API authentication token
+     - (none)
+   * - ``DATALAB_KERNEL_MODE``
+     - Force mode: ``auto``, ``live``, ``standalone``
+     - ``auto``
+
+
 Unified Workspace API
 ---------------------
 
