@@ -480,11 +480,19 @@ class LiveBackend(WorkspaceBackend):
         # Wait for object to appear (cross-thread signal processing)
         # On slow CI, the first add can trigger lazy initialization that takes
         # 15+ seconds on Python 3.13. Use 60s timeout to be safe.
+        #
+        # We also verify the object is retrievable via get_object(), not just
+        # that it appears in titles. This avoids race conditions where the title
+        # appears but the object isn't fully ready for retrieval yet.
         for _ in range(600):  # 60 seconds total timeout
             try:
                 titles = self.proxy.get_object_titles(panel=panel)
                 if name in titles:
-                    return  # Object successfully added
+                    # Double-check object is actually retrievable
+                    # This catches race conditions where title appears before
+                    # the object is fully indexed
+                    self.proxy.get_object(name, panel=panel)
+                    return  # Object successfully added and retrievable
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
             time.sleep(0.1)
