@@ -58,7 +58,8 @@ jobs:
           git clone --depth 1 --branch develop https://github.com/PlotPyStack/guidata.git
           git clone --depth 1 --branch develop https://github.com/PlotPyStack/plotpy.git
           git clone --depth 1 --branch develop https://github.com/DataLab-Platform/sigima.git
-          git clone --depth 1 --branch develop https://github.com/DataLab-Platform/DataLab.git
+          # TODO: Switch back to 'develop' branch once feature/webapi is merged
+          git clone --depth 1 --branch feature/webapi https://github.com/DataLab-Platform/DataLab.git
           cd DataLab-Kernel
           pip install -e ../guidata
           pip install -e ../PythonQwt
