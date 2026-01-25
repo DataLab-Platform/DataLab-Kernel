@@ -810,11 +810,12 @@ class Workspace:
         self._backend.add(name, obj, overwrite=overwrite)
         # For live backend, allow retry window for object to appear
         # This handles race conditions with XML-RPC (especially on Python 3.9)
-        for _ in range(20):
-            try:
-                return self._backend.get(name)
-            except KeyError:
-                time.sleep(0.1)
+        if isinstance(self._backend, LiveBackend):
+            for _ in range(50):  # 5 seconds total timeout
+                try:
+                    return self._backend.get(name)
+                except KeyError:
+                    time.sleep(0.1)
         return self._backend.get(name)
 
     def remove(self, name: str) -> None:
