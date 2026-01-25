@@ -488,6 +488,12 @@ class LiveBackend(WorkspaceBackend):
         # add_object auto-detects panel based on object type
         self.proxy.add_object(obj)
 
+        # Force synchronization: add_object uses Qt signals without @remote_call
+        # decorator, so it returns before the object is actually added.
+        # Calling get_current_panel() (which has @remote_call) forces the Qt event
+        # loop to process pending signals including SIG_ADD_OBJECT.
+        self.proxy.get_current_panel()
+
     def remove(self, name: str) -> None:
         """Remove an object from the workspace.
 
