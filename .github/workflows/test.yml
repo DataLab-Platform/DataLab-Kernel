@@ -86,6 +86,4 @@ jobs:
       run: pytest --standalone-only -v --tb=long
 
     - name: Run all tests
-      run: |
-        # Run integration tests with DataLab auto-start
-        pytest -v --tb=long
+      run: pytest -v --tb=long
