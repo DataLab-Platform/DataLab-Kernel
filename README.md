@@ -1,5 +1,10 @@
 # DataLab-Kernel
 
+[![license](https://img.shields.io/pypi/l/datalab-kernel.svg)](./LICENSE)
+[![pypi version](https://img.shields.io/pypi/v/datalab-kernel.svg)](https://pypi.org/project/datalab-kernel/)
+[![PyPI status](https://img.shields.io/pypi/status/datalab-kernel.svg)](https://github.com/DataLab-Platform/DataLab-Kernel)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/datalab-kernel.svg)](https://pypi.org/project/datalab-kernel/)
+
 **A standalone Jupyter kernel providing seamless, reproducible access to DataLab workspaces, with optional live synchronization to the DataLab GUI.**
 
 ---
