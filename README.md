@@ -20,7 +20,7 @@ It enables scientists and engineers to:
 - share notebooks that can be replayed **with or without DataLab**,
 - combine narrative, code, and results without sacrificing interactive visualization.
 
-DataLab-Kernel is **not** a replacement for DataLab’s GUI.  
+DataLab-Kernel is **not** a replacement for DataLab’s GUI.
 It is a **complementary execution layer** that turns DataLab into a hybrid scientific platform:
 **GUI-driven when needed, notebook-driven when appropriate.**
 
@@ -97,14 +97,42 @@ Two connection methods are supported:
 
 ```bash
 pip install datalab-kernel sigima
+python -m datalab_kernel install
 jupyter lab
 ```
 
 Then select **DataLab Kernel** from the kernel list.
 
+### Dependencies
+
+DataLab-Kernel uses **xeus-python** as its backend, which provides:
+
+- Improved performance compared to ipykernel
+- Native debugger support
+- JupyterLite compatibility
+- Better Qt event loop integration
+
+The kernel requires:
+
+- `xeus-python>=0.17.0` - The xeus-based Python kernel
+- `xeus-python-shell>=0.6.0` - Python shell utilities for xeus-python
+- `sigima>=1.0` - Scientific signal and image processing
+- `numpy>=1.22`, `h5py>=3.0`, `matplotlib>=3.5`
+
 ### With DataLab
 
 When installed alongside DataLab, the kernel is automatically available and can be launched directly from the DataLab interface.
+
+### Installing from conda-forge (recommended)
+
+For best compatibility, especially on Windows:
+
+```bash
+mamba create -n datalab-kernel
+mamba activate datalab-kernel
+mamba install xeus-python datalab-kernel -c conda-forge
+python -m datalab_kernel install
+```
 
 ---
 

@@ -31,9 +31,9 @@ class TestKernelSpec:
 
         assert spec["display_name"] == "DataLab"
         assert spec["language"] == "python"
-        assert len(spec["argv"]) >= 4
-        assert "-m" in spec["argv"]
-        assert "datalab_kernel.kernel" in spec["argv"]
+        assert len(spec["argv"]) >= 3
+        # Should reference xpython or have connection file placeholder
+        assert "{connection_file}" in " ".join(spec["argv"])
 
     def test_kernel_spec_json_serializable(self):
         """Verify kernel spec can be serialized to JSON."""
@@ -47,28 +47,83 @@ class TestKernelSpec:
         parsed = json.loads(json_str)
         assert parsed == spec
 
+    def test_kernel_spec_has_debugger_metadata(self):
+        """Verify kernel spec enables debugger support."""
+        from datalab_kernel.install import get_kernel_spec
+
+        spec = get_kernel_spec()
+        assert "metadata" in spec
+        assert spec["metadata"].get("debugger") is True
+
+    def test_kernel_spec_has_env(self):
+        """Verify kernel spec sets environment variables."""
+        from datalab_kernel.install import get_kernel_spec
+
+        spec = get_kernel_spec()
+        assert "env" in spec
+        assert spec["env"].get("DATALAB_KERNEL_STARTUP") == "1"
+
 
 class TestKernelModule:
     """Tests for kernel module imports and structure."""
 
-    def test_kernel_class_exists(self):
-        """Verify DataLabKernel class exists and is importable."""
-        from datalab_kernel.kernel import DataLabKernel
+    def test_kernel_metadata_exists(self):
+        """Verify kernel metadata constants exist and are valid."""
+        from datalab_kernel.kernel import (
+            KERNEL_BANNER,
+            KERNEL_DISPLAY_NAME,
+            KERNEL_HELP_LINKS,
+            KERNEL_IMPLEMENTATION,
+            KERNEL_LANGUAGE,
+            KERNEL_LANGUAGE_INFO,
+        )
 
-        assert DataLabKernel is not None
+        assert KERNEL_IMPLEMENTATION == "datalab-kernel"
+        assert KERNEL_LANGUAGE == "python"
+        assert KERNEL_DISPLAY_NAME == "DataLab"
+        assert "xeus-python" in KERNEL_BANNER
+        assert isinstance(KERNEL_LANGUAGE_INFO, dict)
+        assert isinstance(KERNEL_HELP_LINKS, list)
 
-    def test_kernel_attributes(self):
-        """Verify kernel class has required attributes."""
-        from datalab_kernel.kernel import DataLabKernel
+    def test_get_kernel_info_function(self):
+        """Verify get_kernel_info returns proper structure."""
+        from datalab_kernel.kernel import get_kernel_info
 
-        assert hasattr(DataLabKernel, "implementation")
-        assert hasattr(DataLabKernel, "implementation_version")
-        assert hasattr(DataLabKernel, "language")
-        assert hasattr(DataLabKernel, "language_info")
-        assert hasattr(DataLabKernel, "banner")
+        info = get_kernel_info()
 
-        assert DataLabKernel.implementation == "datalab-kernel"
-        assert DataLabKernel.language == "python"
+        assert "protocol_version" in info
+        assert "implementation" in info
+        assert "implementation_version" in info
+        assert "language_info" in info
+        assert "banner" in info
+        assert "help_links" in info
+
+        assert info["implementation"] == "datalab-kernel"
+
+
+class TestStartupModule:
+    """Tests for the startup module."""
+
+    def test_setup_namespace_returns_dict(self):
+        """Verify setup_namespace returns a proper namespace dictionary."""
+        from datalab_kernel.startup import setup_namespace
+
+        ns = setup_namespace()
+
+        assert isinstance(ns, dict)
+        assert "workspace" in ns
+        assert "plotter" in ns
+        assert "np" in ns
+        assert "create_signal" in ns
+        assert "create_image" in ns
+
+    def test_setup_namespace_has_sigima(self):
+        """Verify sigima is included in namespace when available."""
+        from datalab_kernel.startup import setup_namespace
+
+        ns = setup_namespace()
+        # sigima should be available in test environment
+        assert "sigima" in ns
 
 
 class TestNamespaceAvailability:

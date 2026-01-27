@@ -8,6 +8,12 @@ DataLab Jupyter Kernel
 A standalone Jupyter kernel providing seamless, reproducible access to DataLab
 workspaces, with optional live synchronization to the DataLab GUI.
 
+This kernel uses **xeus-python** as its backend for:
+- Improved performance compared to ipykernel
+- Native debugger support
+- JupyterLite compatibility
+- Better Qt event loop integration
+
 Main components:
 - `workspace`: Data access and persistence API
 - `plotter`: Visualization frontend

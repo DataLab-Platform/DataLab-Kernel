@@ -24,10 +24,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
 ]
-keywords = ["jupyter", "kernel", "datalab", "scientific", "data processing"]
+keywords = ["jupyter", "kernel", "datalab", "scientific", "data processing", "xeus"]
 requires-python = ">=3.9"
 dependencies = [
-    "ipykernel>=6.0",
+    "xeus-python>=0.17.0",
+    "xeus-python-shell>=0.6.0",
     "jupyter-client>=7.0",
     "numpy>=1.22",
     "httpx>=0.25.0",
