@@ -295,8 +295,8 @@ def datalab_instance(request):
 
     yield
 
-    # Cleanup
-    if datalab_started_by_us:
+    # Cleanup: stop DataLab if we started it (explicitly or lazily)
+    if datalab_started_by_us or _lazy_datalab_started:
         _stop_datalab()
 
 
