@@ -17,8 +17,9 @@ import tempfile
 import numpy as np
 import pytest
 
+from datalab_kernel.backends import StandaloneBackend
 from datalab_kernel.tests.data import make_test_image, make_test_signal
-from datalab_kernel.workspace import StandaloneBackend, Workspace
+from datalab_kernel.workspace import Workspace
 
 
 class TestWorkspaceSave:

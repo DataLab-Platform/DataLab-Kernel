@@ -120,15 +120,34 @@ class WebApiBackend:
         return self._base_url
 
     def _verify_connection(self) -> None:
-        """Verify connection to the DataLab server."""
-        try:
-            response = self._client.get("/api/v1/status")
-            response.raise_for_status()
-            data = response.json()
-            if not data.get("running"):
-                raise ConnectionError("DataLab Web API is not running")
-        except httpx.HTTPError as e:
-            raise ConnectionError(f"Failed to connect to DataLab Web API: {e}") from e
+        """Verify connection to the DataLab server.
+
+        Retries up to 10 times with exponential backoff to allow time for
+        the Uvicorn server to start accepting connections.
+        """
+        import time
+
+        max_retries = 10
+        base_delay = 0.1  # Start with 100ms
+
+        for attempt in range(max_retries):
+            try:
+                response = self._client.get("/api/v1/status")
+                response.raise_for_status()
+                data = response.json()
+                if not data.get("running"):
+                    raise ConnectionError("DataLab Web API is not running")
+                return  # Success!
+            except httpx.HTTPError as e:
+                if attempt == max_retries - 1:
+                    # Last attempt failed
+                    raise ConnectionError(
+                        f"Failed to connect to DataLab Web API after {max_retries} attempts: {e}"
+                    ) from e
+
+                # Wait before retrying (exponential backoff)
+                delay = base_delay * (2**attempt)
+                time.sleep(delay)
 
     def _raise_for_status(self, response: httpx.Response) -> None:
         """Check response status and raise appropriate exceptions.
@@ -492,6 +511,90 @@ class WebApiBackend:
             return obj
 
         return None
+
+    # =========================================================================
+    # Computation operations
+    # =========================================================================
+
+    def select_objects(
+        self, names: list[str], panel: str | None = None
+    ) -> tuple[list[str], str]:
+        """Select objects by name in DataLab.
+
+        Args:
+            names: List of object names/titles to select.
+            panel: Panel name ("signal" or "image"). None = auto-detect.
+
+        Returns:
+            Tuple of (list of selected names, panel name).
+
+        Raises:
+            KeyError: If any object not found.
+            ValueError: If objects span multiple panels.
+        """
+        response = self._client.post(
+            "/api/v1/select",
+            json={"selection": names, "panel": panel},
+        )
+        self._raise_for_status(response)
+        data = response.json()
+        return data["selected"], data["panel"]
+
+    def get_selected_objects(self, panel: str | None = None) -> list[str]:
+        """Get names of currently selected objects.
+
+        Note: This is not currently exposed via the Web API.
+        Returns an empty list as a fallback.
+
+        Args:
+            panel: Panel name. None = current panel.
+
+        Returns:
+            List of selected object names.
+        """
+        # TODO: Add GET /api/v1/selection endpoint to DataLab Web API
+        return []
+
+    def calc(self, name: str, param: dict | None = None) -> tuple[bool, list[str]]:
+        """Call a computation function on selected objects.
+
+        Args:
+            name: Computation function name (e.g., "normalize", "fft").
+            param: Optional parameters as a dictionary.
+
+        Returns:
+            Tuple of (success, list of new object names created).
+
+        Raises:
+            ValueError: If computation function not found.
+            RuntimeError: If computation fails.
+        """
+        request_body = {"name": name}
+        if param is not None:
+            # Convert DataSet to dict if needed
+            if hasattr(param, "__dict__") and not isinstance(param, dict):
+                # It's a DataSet-like object, convert to dict
+                param_dict = {}
+                for key in dir(param):
+                    if not key.startswith("_"):
+                        try:
+                            value = getattr(param, key)
+                            if not callable(value):
+                                # Try to serialize - skip non-serializable
+                                import json
+
+                                json.dumps(value)
+                                param_dict[key] = value
+                        except (TypeError, ValueError):
+                            pass
+                request_body["param"] = param_dict
+            else:
+                request_body["param"] = param
+
+        response = self._client.post("/api/v1/calc", json=request_body)
+        self._raise_for_status(response)
+        data = response.json()
+        return data["success"], data.get("result_names", [])
 
     def close(self) -> None:
         """Close the HTTP client."""

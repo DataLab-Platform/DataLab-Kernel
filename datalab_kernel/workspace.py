@@ -17,13 +17,11 @@ The backend is selected automatically at kernel startup.
 from __future__ import annotations
 
 import os
-import time
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from enum import Enum
 from typing import TYPE_CHECKING
 
-import numpy as np
 from sigima import ImageObj, SignalObj
 
 if TYPE_CHECKING:
@@ -77,532 +75,6 @@ class WorkspaceBackend(ABC):
         """Load workspace from HDF5 file."""
 
 
-class StandaloneBackend(WorkspaceBackend):
-    """Standalone backend using local memory storage with HDF5 persistence."""
-
-    def __init__(self) -> None:
-        self._objects: dict[str, DataObject] = {}
-
-    def list(self) -> list[str]:
-        """List all object names in the workspace."""
-        return list(self._objects.keys())
-
-    def get(self, name: str) -> DataObject:
-        """Retrieve an object by name.
-
-        Args:
-            name: Object name
-
-        Returns:
-            The requested object
-
-        Raises:
-            KeyError: If object not found
-        """
-        if name not in self._objects:
-            available = ", ".join(self._objects.keys()) if self._objects else "(empty)"
-            raise KeyError(
-                f"Object '{name}' not found. Available objects: [{available}]"
-            )
-        return self._objects[name]
-
-    def add(self, name: str, obj: DataObject, overwrite: bool = False) -> None:
-        """Add an object to the workspace.
-
-        Args:
-            name: Object name
-            obj: Object to add (SignalObj or ImageObj)
-            overwrite: If True, replace existing object with same name
-
-        Raises:
-            ValueError: If object with name exists and overwrite=False
-        """
-        if name in self._objects and not overwrite:
-            raise ValueError(
-                f"Object '{name}' already exists. Use overwrite=True to replace."
-            )
-        # Make a copy to ensure isolation
-        self._objects[name] = obj.copy() if hasattr(obj, "copy") else obj
-
-    def remove(self, name: str) -> None:
-        """Remove an object from the workspace.
-
-        Args:
-            name: Object name
-
-        Raises:
-            KeyError: If object not found
-        """
-        if name not in self._objects:
-            available = ", ".join(self._objects.keys()) if self._objects else "(empty)"
-            raise KeyError(
-                f"Object '{name}' not found. Available objects: [{available}]"
-            )
-        del self._objects[name]
-
-    def rename(self, old_name: str, new_name: str) -> None:
-        """Rename an object.
-
-        Args:
-            old_name: Current object name
-            new_name: New object name
-
-        Raises:
-            KeyError: If old_name not found
-            ValueError: If new_name already exists
-        """
-        if old_name not in self._objects:
-            raise KeyError(f"Object '{old_name}' not found.")
-        if new_name in self._objects:
-            raise ValueError(f"Object '{new_name}' already exists.")
-        self._objects[new_name] = self._objects.pop(old_name)
-        # Update object's internal title if it has one
-        obj = self._objects[new_name]
-        if hasattr(obj, "title"):
-            obj.title = new_name
-
-    def exists(self, name: str) -> bool:
-        """Check if an object exists."""
-        return name in self._objects
-
-    def clear(self) -> None:
-        """Remove all objects from the workspace."""
-        self._objects.clear()
-
-    def save(self, filepath: str) -> None:
-        """Save workspace to HDF5 file.
-
-        Args:
-            filepath: Path to save file (should end with .h5)
-        """
-        # Delayed import: h5py is optional for HDF5 persistence
-        import h5py  # pylint: disable=import-outside-toplevel
-
-        # Ensure .h5 extension
-        if not filepath.endswith(".h5"):
-            filepath = filepath + ".h5"
-
-        with h5py.File(filepath, "w") as f:
-            # Store metadata
-            f.attrs["datalab_kernel_version"] = "0.1.0"
-            f.attrs["format_version"] = "1.0"
-
-            for name, obj in self._objects.items():
-                grp = f.create_group(name)
-                self._save_object_to_group(grp, obj)
-
-    def _save_object_to_group(self, grp, obj: DataObject) -> None:
-        """Save a single object to an HDF5 group."""
-        # Detect object type
-        obj_type = type(obj).__name__
-        grp.attrs["type"] = obj_type
-
-        if obj_type == "SignalObj":
-            # Save signal data
-            grp.create_dataset("x", data=obj.x)
-            grp.create_dataset("y", data=obj.y)
-            if obj.dx is not None:
-                grp.create_dataset("dx", data=obj.dx)
-            if obj.dy is not None:
-                grp.create_dataset("dy", data=obj.dy)
-            # Save metadata
-            if hasattr(obj, "title") and obj.title:
-                grp.attrs["title"] = obj.title
-            if hasattr(obj, "xlabel") and obj.xlabel:
-                grp.attrs["xlabel"] = obj.xlabel
-            if hasattr(obj, "ylabel") and obj.ylabel:
-                grp.attrs["ylabel"] = obj.ylabel
-            if hasattr(obj, "xunit") and obj.xunit:
-                grp.attrs["xunit"] = obj.xunit
-            if hasattr(obj, "yunit") and obj.yunit:
-                grp.attrs["yunit"] = obj.yunit
-
-        elif obj_type == "ImageObj":
-            # Save image data
-            grp.create_dataset("data", data=obj.data)
-            # Save coordinate info
-            for attr in ("x0", "y0", "dx", "dy"):
-                if hasattr(obj, attr):
-                    val = getattr(obj, attr)
-                    if val is not None:
-                        grp.attrs[attr] = val
-            # Save metadata
-            if hasattr(obj, "title") and obj.title:
-                grp.attrs["title"] = obj.title
-            if hasattr(obj, "xlabel") and obj.xlabel:
-                grp.attrs["xlabel"] = obj.xlabel
-            if hasattr(obj, "ylabel") and obj.ylabel:
-                grp.attrs["ylabel"] = obj.ylabel
-            if hasattr(obj, "zlabel") and obj.zlabel:
-                grp.attrs["zlabel"] = obj.zlabel
-            if hasattr(obj, "xunit") and obj.xunit:
-                grp.attrs["xunit"] = obj.xunit
-            if hasattr(obj, "yunit") and obj.yunit:
-                grp.attrs["yunit"] = obj.yunit
-            if hasattr(obj, "zunit") and obj.zunit:
-                grp.attrs["zunit"] = obj.zunit
-
-    def load(self, filepath: str) -> None:
-        """Load workspace from HDF5 file.
-
-        Args:
-            filepath: Path to HDF5 file
-
-        Raises:
-            FileNotFoundError: If file doesn't exist
-        """
-        # Delayed import: h5py is optional for HDF5 persistence
-        import h5py  # pylint: disable=import-outside-toplevel
-
-        if not os.path.exists(filepath):
-            raise FileNotFoundError(f"File not found: {filepath}")
-
-        with h5py.File(filepath, "r") as f:
-            for name in f:
-                grp = f[name]
-                obj = self._load_object_from_group(grp, name)
-                if obj is not None:
-                    self._objects[name] = obj
-
-    def _load_object_from_group(self, grp, name: str) -> DataObject | None:
-        """Load a single object from an HDF5 group."""
-        obj_type = grp.attrs.get("type", "unknown")
-
-        if obj_type == "SignalObj":
-            return self._load_signal(grp, name)
-        if obj_type == "ImageObj":
-            return self._load_image(grp, name)
-        # Try to infer type from data
-        if "x" in grp and "y" in grp:
-            return self._load_signal(grp, name)
-        if "data" in grp:
-            return self._load_image(grp, name)
-        return None
-
-    def _load_signal(self, grp, name: str) -> DataObject:
-        """Load a SignalObj from an HDF5 group."""
-        x = np.array(grp["x"])
-        y = np.array(grp["y"])
-        dx = np.array(grp["dx"]) if "dx" in grp else None
-        dy = np.array(grp["dy"]) if "dy" in grp else None
-
-        obj = SignalObj()
-        obj.set_xydata(x, y, dx=dx, dy=dy)
-        obj.title = grp.attrs.get("title", name)
-        if "xlabel" in grp.attrs:
-            obj.xlabel = grp.attrs["xlabel"]
-        if "ylabel" in grp.attrs:
-            obj.ylabel = grp.attrs["ylabel"]
-        if "xunit" in grp.attrs:
-            obj.xunit = grp.attrs["xunit"]
-        if "yunit" in grp.attrs:
-            obj.yunit = grp.attrs["yunit"]
-
-        return obj
-
-    def _load_image(self, grp, name: str) -> DataObject:
-        """Load an ImageObj from an HDF5 group."""
-        data = np.array(grp["data"])
-
-        obj = ImageObj()
-        obj.data = data
-        obj.title = grp.attrs.get("title", name)
-
-        for attr in ("x0", "y0", "dx", "dy"):
-            if attr in grp.attrs:
-                setattr(obj, attr, float(grp.attrs[attr]))
-
-        if "xlabel" in grp.attrs:
-            obj.xlabel = grp.attrs["xlabel"]
-        if "ylabel" in grp.attrs:
-            obj.ylabel = grp.attrs["ylabel"]
-        if "zlabel" in grp.attrs:
-            obj.zlabel = grp.attrs["zlabel"]
-        if "xunit" in grp.attrs:
-            obj.xunit = grp.attrs["xunit"]
-        if "yunit" in grp.attrs:
-            obj.yunit = grp.attrs["yunit"]
-        if "zunit" in grp.attrs:
-            obj.zunit = grp.attrs["zunit"]
-
-        return obj
-
-
-class LiveBackend(WorkspaceBackend):
-    """Live backend synchronized with a running DataLab instance.
-
-    This backend communicates with a running DataLab application via
-    the RemoteProxy XML-RPC interface, enabling real-time synchronization
-    between the Jupyter kernel workspace and DataLab's data panels.
-    """
-
-    def __init__(self) -> None:
-        self._proxy = None
-        self._connect()
-
-    def _connect(self) -> None:
-        """Connect to DataLab instance."""
-        # Conditional import: datalab is optional dependency
-        # pylint: disable=import-outside-toplevel
-        try:
-            from datalab.control.proxy import RemoteProxy
-
-            self._proxy = RemoteProxy()
-            # Test connection by getting version
-            self._proxy.get_version()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            self._proxy = None
-            raise ConnectionError("Failed to connect to DataLab instance") from e
-
-    @property
-    def proxy(self):
-        """Get the DataLab proxy.
-
-        Returns:
-            RemoteProxy connected to DataLab instance.
-
-        Raises:
-            ConnectionError: If not connected to DataLab.
-        """
-        if self._proxy is None:
-            raise ConnectionError("Not connected to DataLab")
-        return self._proxy
-
-    def _get_panel_for_title(self, title: str) -> str | None:
-        """Find which panel contains an object with the given title.
-
-        Args:
-            title: Object title to search for.
-
-        Returns:
-            Panel name ("signal" or "image") or None if not found.
-        """
-        # Check signals
-        try:
-            sig_titles = self.proxy.get_object_titles(panel="signal")
-            if title in sig_titles:
-                return "signal"
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        # Check images
-        try:
-            img_titles = self.proxy.get_object_titles(panel="image")
-            if title in img_titles:
-                return "image"
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        return None
-
-    def list(self) -> list[str]:
-        """List all object names in the workspace.
-
-        Returns:
-            List of object titles from both signal and image panels.
-        """
-        titles = []
-
-        # Get signal titles
-        try:
-            sig_titles = self.proxy.get_object_titles(panel="signal")
-            titles.extend(sig_titles)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        # Get image titles
-        try:
-            img_titles = self.proxy.get_object_titles(panel="image")
-            titles.extend(img_titles)
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        return titles
-
-    def get(self, name: str) -> DataObject:
-        """Retrieve an object by name.
-
-        Args:
-            name: Object title to retrieve.
-
-        Returns:
-            SignalObj or ImageObj from DataLab.
-
-        Raises:
-            KeyError: If object not found.
-        """
-        # Try to find in signals first
-        try:
-            sig_titles = self.proxy.get_object_titles(panel="signal")
-            if name in sig_titles:
-                return self.proxy.get_object(name, panel="signal")
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        # Try to find in images
-        try:
-            img_titles = self.proxy.get_object_titles(panel="image")
-            if name in img_titles:
-                return self.proxy.get_object(name, panel="image")
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
-
-        raise KeyError(f"Object '{name}' not found in DataLab workspace")
-
-    def add(self, name: str, obj: DataObject, overwrite: bool = False) -> None:
-        """Add an object to the workspace.
-
-        Args:
-            name: Object title.
-            obj: SignalObj or ImageObj to add.
-            overwrite: If True, replace existing object with same name.
-
-        Raises:
-            ValueError: If object exists and overwrite is False.
-            TypeError: If object type is not supported.
-        """
-        if not overwrite and self.exists(name):
-            raise ValueError(f"Object '{name}' already exists. Use overwrite=True.")
-
-        if overwrite and self.exists(name):
-            self.remove(name)
-
-        # Set the title on the object
-        obj.title = name
-
-        # Determine which panel the object will be added to
-        panel = "signal" if isinstance(obj, SignalObj) else "image"
-
-        # add_object uses cross-thread Qt signals - it returns before the signal
-        # is processed by the main thread. We must poll until the object appears.
-        #
-        # On slow CI (especially Python 3.9), the first add can trigger lazy
-        # initialization that takes a long time. We use a retry strategy:
-        # - Try add_object() up to 3 times with increasing timeouts
-        # - This handles cases where the Qt signal gets lost or delayed
-        add_attempts = 3
-        poll_intervals = [200, 300, 300]  # Number of 0.1s polls per attempt
-
-        for attempt in range(add_attempts):
-            self.proxy.add_object(obj)
-
-            # Give Qt event loop time to process the signal before polling
-            time.sleep(0.5)
-
-            # Poll for the object to appear
-            poll_count = poll_intervals[attempt]
-            for _ in range(poll_count):
-                try:
-                    titles = self.proxy.get_object_titles(panel=panel)
-                    if name in titles:
-                        # Double-check object is actually retrievable
-                        # This catches race conditions where title appears before
-                        # the object is fully indexed
-                        self.proxy.get_object(name, panel=panel)
-                        return  # Object successfully added and retrievable
-                except Exception:  # pylint: disable=broad-exception-caught
-                    pass
-                time.sleep(0.1)
-
-            # Object didn't appear, will retry add_object() on next iteration
-
-        # If we get here after all attempts, the add truly failed
-        raise RuntimeError(f"Timeout waiting for object '{name}' to appear in DataLab")
-
-    def remove(self, name: str) -> None:
-        """Remove an object from the workspace.
-
-        Args:
-            name: Object title to remove.
-
-        Raises:
-            KeyError: If object not found.
-            NotImplementedError: If DataLab version doesn't support remove.
-        """
-        panel = self._get_panel_for_title(name)
-        if panel is None:
-            raise KeyError(f"Object '{name}' not found")
-
-        # Get object titles to find the 1-based index
-        titles = self.proxy.get_object_titles(panel=panel)
-        try:
-            obj_num = titles.index(name) + 1  # 1-based index
-        except ValueError:
-            raise KeyError(f"Object '{name}' not found") from None
-
-        # Select the object by number (1-based index) and remove it
-        self.proxy.select_objects([obj_num], panel=panel)
-
-        # Try different methods depending on DataLab version
-        # DataLab 1.1+ has call_method, older versions don't support individual remove
-        if hasattr(self.proxy, "call_method"):
-            self.proxy.call_method("remove_object", force=True)
-        elif "remove_object" in self.proxy.get_method_list():
-            # Direct XML-RPC call if server exposes it
-            # pylint: disable=protected-access
-            self.proxy._datalab.remove_object(True)  # noqa: SLF001
-            # pylint: enable=protected-access
-        else:
-            raise NotImplementedError(
-                "Individual object removal requires DataLab 1.1+. "
-                "Use clear() to remove all objects, or upgrade DataLab."
-            )
-
-    def rename(self, old_name: str, new_name: str) -> None:
-        """Rename an object.
-
-        Args:
-            old_name: Current object title.
-            new_name: New object title.
-
-        Raises:
-            KeyError: If old_name not found.
-            ValueError: If new_name already exists.
-        """
-        if not self.exists(old_name):
-            raise KeyError(f"Object '{old_name}' not found")
-        if self.exists(new_name):
-            raise ValueError(f"Object '{new_name}' already exists")
-
-        # Get the object, update title, remove old, add new
-        obj = self.get(old_name)
-        obj.title = new_name
-        self.remove(old_name)
-        self.proxy.add_object(obj)
-
-    def exists(self, name: str) -> bool:
-        """Check if an object exists.
-
-        Args:
-            name: Object title to check.
-
-        Returns:
-            True if object exists, False otherwise.
-        """
-        return name in self.list()
-
-    def clear(self) -> None:
-        """Remove all objects from the workspace."""
-        # Use DataLab's reset_all to clear everything
-        self.proxy.reset_all()
-
-    def save(self, filepath: str) -> None:
-        """Save workspace to HDF5 file.
-
-        Args:
-            filepath: Path to save HDF5 file.
-        """
-        self.proxy.save_h5_workspace(filepath)
-
-    def load(self, filepath: str) -> None:
-        """Load workspace from HDF5 file.
-
-        Args:
-            filepath: Path to HDF5 file to load.
-        """
-        self.proxy.load_h5_workspace([filepath], reset_all=False)
-
-
 class Workspace:
     """
     Workspace API for data access and persistence.
@@ -640,30 +112,35 @@ class Workspace:
 
         if backend is not None:
             self._backend = backend
-            self._mode = (
-                WorkspaceMode.LIVE
-                if isinstance(backend, LiveBackend)
-                else WorkspaceMode.STANDALONE
-            )
+            self._mode = self._detect_mode_from_backend(backend)
         else:
             # Auto-detect mode
             self._backend, self._mode = self._auto_detect_backend()
+
+    def _detect_mode_from_backend(self, backend: WorkspaceBackend) -> WorkspaceMode:
+        """Detect mode from backend type."""
+        # Check for WebApiBackend (imported conditionally)
+        backend_class_name = type(backend).__name__
+        if backend_class_name == "WebApiBackend":
+            return WorkspaceMode.LIVE
+        return WorkspaceMode.STANDALONE
 
     def _auto_detect_backend(self) -> tuple[WorkspaceBackend, WorkspaceMode]:
         """Auto-detect and create appropriate backend.
 
         Priority order:
         1. WebAPI backend if DATALAB_WORKSPACE_URL is set
-        2. XML-RPC LiveBackend if DataLab is running
-        3. StandaloneBackend (fallback)
+        2. StandaloneBackend (fallback)
         """
         # Check kernel mode environment variable
         kernel_mode = os.environ.get("DATALAB_KERNEL_MODE", "auto").lower()
 
         if kernel_mode == "standalone":
+            from datalab_kernel.backends.standalone import StandaloneBackend
+
             return StandaloneBackend(), WorkspaceMode.STANDALONE
 
-        # Try WebAPI first (if URL is set)
+        # Try WebAPI (if URL is set)
         webapi_url = os.environ.get("DATALAB_WORKSPACE_URL")
         if webapi_url:
             try:
@@ -678,39 +155,32 @@ class Workspace:
                         "Failed to connect to DataLab Web API. "
                         "Check DATALAB_WORKSPACE_URL and DATALAB_WORKSPACE_TOKEN."
                     ) from None
-                # Fall through to try XML-RPC
-
-        # Try XML-RPC LiveBackend
-        try:
-            backend = LiveBackend()
-            return backend, WorkspaceMode.LIVE
-        except Exception:  # pylint: disable=broad-exception-caught
-            if kernel_mode == "live":
-                raise ConnectionError(
-                    "Failed to connect to DataLab. "
-                    "Ensure DataLab is running with remote control enabled."
-                ) from None
+                # Fall through to standalone
 
         # Fallback to standalone
+        from datalab_kernel.backends.standalone import StandaloneBackend
+
         return StandaloneBackend(), WorkspaceMode.STANDALONE
 
     def resync(self) -> bool:
-        """Attempt to resync with DataLab.
+        """Attempt to resync with DataLab via Web API.
 
-        If currently in standalone mode and DataLab becomes available,
+        If currently in standalone mode and DataLab Web API becomes available,
         switch to live mode. Objects in the standalone workspace are
         transferred to DataLab.
 
         Returns:
             True if switched to live mode, False if already live or
-             DataLab is not available.
+             DataLab Web API is not available.
         """
         if self._mode == WorkspaceMode.LIVE:
             return False
 
-        # Try to connect to DataLab
+        # Try to connect to DataLab Web API
         try:
-            new_backend = LiveBackend()
+            from datalab_kernel.backends.webapi import WebApiBackend
+
+            new_backend = WebApiBackend()
         except Exception:  # pylint: disable=broad-exception-caught
             return False
 
@@ -836,7 +306,7 @@ class Workspace:
             ValueError: If object exists and overwrite=False
         """
         self._backend.add(name, obj, overwrite=overwrite)
-        # LiveBackend.add() waits for the object to appear, so get() should work
+        # Backend waits for the object to appear, so get() should work
         return self._backend.get(name)
 
     def remove(self, name: str) -> None:
@@ -894,6 +364,40 @@ class Workspace:
         """
         self._backend.load(filepath)
 
+    def select_objects(
+        self, names: list[str], panel: str | None = None
+    ) -> tuple[list[str], str]:
+        """Select objects by name in DataLab.
+
+        This method is only available in live mode. It selects the specified
+        objects, making them the active selection for subsequent operations.
+
+        Args:
+            names: List of object names/titles to select.
+            panel: Panel name ("signal" or "image"). None = auto-detect.
+
+        Returns:
+            Tuple of (list of selected names, panel name).
+
+        Raises:
+            RuntimeError: If not in live mode.
+            KeyError: If any object not found.
+            ValueError: If objects span multiple panels.
+
+        Example::
+
+            # Select objects before calling calc
+            workspace.select_objects(["signal1", "signal2"])
+            workspace.calc("average")
+        """
+        if self._mode != WorkspaceMode.LIVE:
+            raise RuntimeError("select_objects() is only available in live mode")
+
+        backend = self._backend
+        if hasattr(backend, "select_objects"):
+            return backend.select_objects(names, panel)
+        raise RuntimeError("Backend does not support select_objects")
+
     def calc(self, name: str, param: object | None = None) -> object | None:
         """Call a DataLab computation function.
 
@@ -902,21 +406,26 @@ class Workspace:
 
         Args:
             name: Computation function name (e.g., "normalize", "fft", "denoise")
-            param: Optional parameter DataSet for the computation
+            param: Optional parameter DataSet or dict for the computation
 
         Returns:
-            Result from the computation (typically a DataSet with results),
-            or None in standalone mode.
+            Tuple of (success, list of new object names), or None if backend
+            doesn't support returning results.
 
         Raises:
             RuntimeError: If not in live mode
+            ValueError: If computation function not found
 
         Example::
 
-            # Simple computation
+            # Simple computation (select objects first)
+            workspace.select_objects(["my_signal"])
             workspace.calc("normalize")
 
             # Computation with parameters
+            workspace.calc("moving_average", {"n": 5})
+
+            # Or with DataSet
             from sigima.params import MovingAverageParam
             workspace.calc("moving_average", MovingAverageParam.create(n=5))
         """
@@ -924,38 +433,10 @@ class Workspace:
             raise RuntimeError("calc() is only available in live mode")
 
         backend = self._backend
-        if isinstance(backend, LiveBackend):
-            return backend.proxy.calc(name, param)
-        return None
-
-    @property
-    def proxy(self):
-        """Access the DataLab proxy for advanced operations.
-
-        This property is only available in live mode. It provides direct
-        access to the RemoteProxy for operations not covered by the
-        Workspace API.
-
-        Returns:
-            RemoteProxy connected to DataLab
-
-        Raises:
-            RuntimeError: If not in live mode
-
-        Example::
-
-            # Access proxy for advanced operations
-            proxy = workspace.proxy
-            proxy.set_current_panel("signal")
-            proxy.select_objects([1, 2, 3])
-        """
-        if self._mode != WorkspaceMode.LIVE:
-            raise RuntimeError("proxy is only available in live mode")
-
-        backend = self._backend
-        if isinstance(backend, LiveBackend):
-            return backend.proxy
-        raise RuntimeError("Backend is not LiveBackend")
+        # Call backend's calc method
+        if hasattr(backend, "calc"):
+            return backend.calc(name, param)
+        raise RuntimeError("Backend does not support calc()")
 
     def __len__(self) -> int:
         """Return number of objects in workspace."""

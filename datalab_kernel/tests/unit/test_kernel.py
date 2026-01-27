@@ -114,7 +114,8 @@ class TestModeDetection:
     @pytest.mark.standalone
     def test_mode_detection_standalone(self):
         """Verify kernel can be forced to standalone mode."""
-        from datalab_kernel.workspace import StandaloneBackend, Workspace, WorkspaceMode
+        from datalab_kernel.backends import StandaloneBackend
+        from datalab_kernel.workspace import Workspace, WorkspaceMode
 
         # Create workspace with explicit standalone backend
         # (auto-detection would use live mode if DataLab is running)

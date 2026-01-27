@@ -18,8 +18,9 @@ import numpy as np
 import pytest
 from sigima import create_image, create_signal
 
+from datalab_kernel.backends import StandaloneBackend
 from datalab_kernel.plotter import Plotter
-from datalab_kernel.workspace import StandaloneBackend, Workspace
+from datalab_kernel.workspace import Workspace
 
 # Canonical notebook code that must work in both modes
 CANONICAL_CODE = """

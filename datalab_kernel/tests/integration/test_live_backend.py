@@ -5,77 +5,50 @@
 Integration tests for live DataLab connection.
 
 These tests verify that the workspace correctly communicates with DataLab
-via the Web API (preferred) or XML-RPC interface.
+via the Web API.
 """
-# pylint: disable=redefined-outer-name,unused-argument,import-outside-toplevel
 
 from __future__ import annotations
 
-import contextlib
+import os
 
+import httpx
 import numpy as np
 import pytest
+import sigima.params
 from sigima import create_image, create_signal
 
+from datalab_kernel.backends import StandaloneBackend
+from datalab_kernel.backends.webapi import WebApiBackend
 from datalab_kernel.workspace import Workspace, WorkspaceMode
 
 
 def require_datalab():
-    """Skip test if DataLab is not available."""
-    try:
-        from datalab.control.proxy import RemoteProxy
+    """Skip test if DataLab WebAPI is not running.
 
-        proxy = RemoteProxy(autoconnect=False)
-        proxy.connect(timeout=2.0)
-        proxy.disconnect()
+    Checks Web API connectivity as the indicator that DataLab is running.
+    """
+    url = os.environ.get("DATALAB_WORKSPACE_URL", "http://127.0.0.1:18080")
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            response = client.get(f"{url}/api/v1/status")
+            if response.status_code != 200:
+                pytest.skip("DataLab WebAPI not responding correctly")
     except Exception:  # pylint: disable=broad-exception-caught
-        pytest.skip("DataLab not running or not available")
+        pytest.skip("DataLab WebAPI not running or not available")
 
 
 def is_webapi_backend(workspace: Workspace) -> bool:
     """Check if workspace is using WebApiBackend."""
-    from datalab_kernel.backends.webapi import WebApiBackend
-
     # pylint: disable=protected-access
     return isinstance(workspace._backend, WebApiBackend)
 
 
-def require_livebackend(workspace: Workspace):
-    """Skip test if not using LiveBackend (XML-RPC).
-
-    Some tests require the XML-RPC proxy which is only available
-    with LiveBackend, not WebApiBackend.
-    """
-    if is_webapi_backend(workspace):
-        pytest.skip("Test requires LiveBackend (XML-RPC), but using WebApiBackend")
-
-
-@pytest.fixture
-def live_workspace(datalab_instance):
-    """Create a live workspace connected to DataLab.
-
-    Depends on datalab_instance fixture to ensure DataLab is started
-    when --start-datalab is provided.
-
-    Uses Workspace() with auto-detection, which will prefer WebAPI
-    if DATALAB_WORKSPACE_URL is set (as configured by conftest.py).
-    """
-    require_datalab()
-    workspace = Workspace()
-    assert workspace.mode == WorkspaceMode.LIVE, "Expected live mode"
-    # Clear DataLab before each test
-    workspace.clear()
-    yield workspace
-    # Cleanup after test
-    with contextlib.suppress(Exception):
-        workspace.clear()
-
-
 @pytest.mark.live
-class TestLiveBackendConnection:
+class TestLiveConnection:
     """Test connection to DataLab."""
 
-    def test_connect_to_datalab(self, datalab_instance):
+    def test_connect_to_datalab(self):
         """Test that we can connect to a running DataLab instance."""
         require_datalab()
         workspace = Workspace()
@@ -86,7 +59,7 @@ class TestLiveBackendConnection:
         # Should be using WebApiBackend when started with --start-datalab
         assert "WebApiBackend" in status.get("backend", "")
 
-    def test_workspace_mode_detection(self, datalab_instance):
+    def test_workspace_mode_detection(self):
         """Test that workspace correctly detects live mode."""
         require_datalab()
         workspace = Workspace()
@@ -94,8 +67,8 @@ class TestLiveBackendConnection:
 
 
 @pytest.mark.live
-class TestLiveBackendOperations:
-    """Test basic operations on LiveBackend."""
+class TestLiveOperations:
+    """Test basic operations on live workspace."""
 
     def test_list_empty(self, live_workspace):
         """Test listing objects in empty workspace."""
@@ -263,13 +236,9 @@ class TestLiveWorkspaceCalc:
     def test_calc_normalize(self, live_workspace):
         """Test calling normalize computation.
 
-        This test requires LiveBackend (XML-RPC) because it uses proxy.select_objects().
+        This test uses the workspace.select_objects() and workspace.calc()
+        methods to interact with DataLab via the Web API.
         """
-        import sigima.params
-
-        # This test requires XML-RPC proxy for selection
-        require_livebackend(live_workspace)
-
         # Create signal with values > 1
         x = np.linspace(0, 10, 100)
         y = np.sin(x) * 5 + 10  # Range roughly [5, 15]
@@ -278,7 +247,7 @@ class TestLiveWorkspaceCalc:
 
         # Select the signal and call normalize with explicit parameters
         # (passing params avoids blocking UI waiting for user input)
-        live_workspace.proxy.select_objects(["to_normalize"], panel="signal")
+        live_workspace.select_objects(["to_normalize"], panel="signal")
         param = sigima.params.NormalizeParam()  # Use default: method="Maximum"
         live_workspace.calc("normalize", param)
 
@@ -287,6 +256,22 @@ class TestLiveWorkspaceCalc:
         # Find the normalized result
         normalized_names = [n for n in names if "normalize" in n.lower()]
         assert len(normalized_names) > 0, f"Expected normalized signal, got: {names}"
+
+    def test_calc_with_dict_params(self, live_workspace):
+        """Test calling computation with dict parameters."""
+        # Create signal
+        x = np.linspace(0, 10, 100)
+        y = np.sin(x) * 5 + 10
+        signal = create_signal("to_normalize_dict", x, y)
+        live_workspace.add("to_normalize_dict", signal)
+
+        # Select and call with dict params
+        live_workspace.select_objects(["to_normalize_dict"])
+        live_workspace.calc("normalize", {"method": "Maximum"})
+
+        # Verify result exists
+        names = live_workspace.list()
+        assert len(names) >= 2, f"Expected at least 2 objects, got: {names}"
 
 
 class TestStandaloneModeRestrictions:
@@ -297,43 +282,19 @@ class TestStandaloneModeRestrictions:
 
     def test_calc_not_available_in_standalone(self):
         """Test that calc() raises in standalone mode."""
-        from datalab_kernel.workspace import StandaloneBackend
-
         workspace = Workspace(backend=StandaloneBackend())
         assert workspace.mode == WorkspaceMode.STANDALONE
 
         with pytest.raises(RuntimeError, match="only available in live mode"):
             workspace.calc("normalize")
 
-    def test_proxy_not_available_in_standalone(self):
-        """Test that proxy raises in standalone mode."""
-        from datalab_kernel.workspace import StandaloneBackend
-
+    def test_select_objects_not_available_in_standalone(self):
+        """Test that select_objects() raises in standalone mode."""
         workspace = Workspace(backend=StandaloneBackend())
+        assert workspace.mode == WorkspaceMode.STANDALONE
 
         with pytest.raises(RuntimeError, match="only available in live mode"):
-            _ = workspace.proxy
-
-
-@pytest.mark.live
-class TestLiveWorkspaceProxyAccess:
-    """Test direct proxy access for advanced operations.
-
-    These tests require LiveBackend (XML-RPC) because they use the proxy
-    property which is only available with the RemoteProxy interface.
-    """
-
-    def test_proxy_access(self, live_workspace):
-        """Test accessing proxy for advanced operations."""
-        # This test requires XML-RPC proxy
-        require_livebackend(live_workspace)
-
-        proxy = live_workspace.proxy
-        assert proxy is not None
-
-        # Can call proxy methods directly
-        version = proxy.get_version()
-        assert version is not None
+            workspace.select_objects(["test"])
 
 
 @pytest.mark.live
@@ -375,13 +336,11 @@ class TestLiveWorkspaceDunderMethods:
 class TestWorkspaceResync:
     """Test workspace resync from standalone to live mode."""
 
-    def test_resync_transfers_objects(self, datalab_instance):
+    def test_resync_transfers_objects(self):
         """Verify resync transfers objects from standalone to DataLab."""
         require_datalab()
 
         # Start with explicit standalone backend
-        from datalab_kernel.workspace import StandaloneBackend
-
         workspace = Workspace(backend=StandaloneBackend())
         assert workspace.mode == WorkspaceMode.STANDALONE
 
@@ -416,19 +375,24 @@ class TestWorkspaceResync:
         assert result is False
         assert live_workspace.mode == WorkspaceMode.LIVE
 
-    def test_resync_no_datalab_returns_false(self):
-        """Verify resync returns False when DataLab is not available."""
-        from datalab_kernel.workspace import StandaloneBackend
 
+@pytest.mark.standalone
+class TestWorkspaceResyncStandalone:
+    """Test workspace resync in standalone mode."""
+
+    def test_resync_no_datalab_returns_false(self):
+        """Verify resync returns False when DataLab is not available.
+
+        This test should only run in standalone mode (without --live flag).
+        """
         # Create standalone workspace (no DataLab running for this test)
         workspace = Workspace(backend=StandaloneBackend())
         workspace.add("test", create_signal("test", np.array([1, 2]), np.array([3, 4])))
 
-        # Mock: This test would need DataLab to be stopped
-        # For now, we just verify the method exists and can be called
-        # The actual behavior depends on whether DataLab is running
-        _result = workspace.resync()
+        # Attempt resync when DataLab is not available
+        result = workspace.resync()
 
-        # If DataLab is running, it will succeed; otherwise False
-        # Either way, the workspace should still be functional
-        assert workspace.exists("test") or len(workspace) >= 0
+        # Should return False when DataLab is not available
+        assert result is False
+        assert workspace.mode == WorkspaceMode.STANDALONE
+        assert workspace.exists("test")

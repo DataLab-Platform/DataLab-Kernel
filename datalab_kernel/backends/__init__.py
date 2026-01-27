@@ -10,8 +10,7 @@ Backend implementations for the DataLab Kernel workspace.
 Available backends:
 
 - :class:`StandaloneBackend`: Local memory storage with HDF5 persistence
-- :class:`LiveBackend`: XML-RPC synchronization with DataLab (legacy)
-- :class:`WebApiBackend`: HTTP/JSON + NPZ synchronization with DataLab (recommended)
+- :class:`WebApiBackend`: HTTP/JSON + NPZ synchronization with DataLab
 """
 
 from __future__ import annotations
@@ -22,10 +21,11 @@ __all__ = [
     "WorkspaceBackend",
 ]
 
-# Re-export base classes from workspace module for convenience
-from datalab_kernel.workspace import StandaloneBackend, WorkspaceBackend
+# Re-export base class from workspace module for convenience
+# Import backends
+from datalab_kernel.backends.standalone import StandaloneBackend
+from datalab_kernel.workspace import WorkspaceBackend
 
-# Import WebAPI backend (handles missing dependencies gracefully)
 try:
     from datalab_kernel.backends.webapi import WebApiBackend
 except ImportError:

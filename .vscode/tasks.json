@@ -67,12 +67,12 @@
             "type": "shell",
             "command": "${command:python.interpreterPath}",
             "args": [
+                "scripts/run_with_env.py",
+                "${command:python.interpreterPath}",
                 "-m",
                 "pytest",
-                "--live",
-                "--start-datalab",
+                // "--start-datalab",
                 "datalab_kernel/tests/",
-                "-v",
                 "--ff"
             ],
             "options": {

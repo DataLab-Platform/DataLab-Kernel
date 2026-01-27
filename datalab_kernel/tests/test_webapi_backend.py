@@ -201,7 +201,8 @@ class TestWorkspaceBackendSelection:
         monkeypatch.delenv("DATALAB_KERNEL_MODE", raising=False)
 
         # pylint: disable=import-outside-toplevel
-        from datalab_kernel.workspace import StandaloneBackend, Workspace, WorkspaceMode
+        from datalab_kernel.backends import StandaloneBackend
+        from datalab_kernel.workspace import Workspace, WorkspaceMode
 
         ws = Workspace()
         assert ws.mode == WorkspaceMode.STANDALONE
@@ -215,7 +216,8 @@ class TestWorkspaceBackendSelection:
         monkeypatch.setenv("DATALAB_WORKSPACE_TOKEN", "test-token")
 
         # pylint: disable=import-outside-toplevel
-        from datalab_kernel.workspace import StandaloneBackend, Workspace, WorkspaceMode
+        from datalab_kernel.backends import StandaloneBackend
+        from datalab_kernel.workspace import Workspace, WorkspaceMode
 
         ws = Workspace()
         assert ws.mode == WorkspaceMode.STANDALONE
