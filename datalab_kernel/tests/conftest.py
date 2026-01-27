@@ -236,25 +236,29 @@ def datalab_instance(request):
 
     This fixture:
     - Starts DataLab if --start-datalab is provided
+    - Starts WebAPI server for live tests (--start-datalab or --webapi)
     - Always closes DataLab at the end of the live test session
 
     Usage:
         pytest --live                   # Uses existing DataLab, closes it after
-        pytest --live --start-datalab   # Starts DataLab, closes it after
+        pytest --live --start-datalab   # Starts DataLab with WebAPI, closes after
 
     For tests that need DataLab running, use this fixture.
     """
     if request.config.getoption("--start-datalab"):
         _start_datalab()
 
-    # Start WebAPI server if --webapi flag is provided
-    if request.config.getoption("--webapi"):
+    # Start WebAPI server for live tests (--start-datalab implies WebAPI)
+    start_webapi = request.config.getoption("--webapi") or request.config.getoption(
+        "--start-datalab"
+    )
+    if start_webapi:
         _start_webapi_server()
 
     yield
 
     # Stop WebAPI server if it was started
-    if request.config.getoption("--webapi"):
+    if start_webapi:
         _stop_webapi_server()
 
     # Always close DataLab when live tests are done
