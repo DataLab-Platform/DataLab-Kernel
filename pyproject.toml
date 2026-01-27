@@ -30,21 +30,17 @@ dependencies = [
     "ipykernel>=6.0",
     "jupyter-client>=7.0",
     "numpy>=1.22",
+    "httpx>=0.25.0",
     "h5py>=3.0",
     "matplotlib>=3.5",
     "sigima>=1.0",
 ]
 
 [project.optional-dependencies]
-webapi = [
-    # HTTP client for WebAPI backend (WASM-compatible)
-    "httpx>=0.25.0",
-]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "ruff>=0.1.0",
-    "httpx>=0.25.0",
 ]
 doc = [
     "sphinx>=7.0",
