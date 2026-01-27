@@ -370,7 +370,7 @@ def live_workspace(auto_datalab):  # pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
-def webapi_backend(auto_datalab):  # pylint: disable=redefined-outer-name,unused-argument
+def webapi_backend(request, auto_datalab):  # pylint: disable=redefined-outer-name,unused-argument
     """Function-scoped fixture providing a WebApiBackend connected to DataLab.
 
     In default mode: Uses auto-started DataLab.
@@ -378,7 +378,15 @@ def webapi_backend(auto_datalab):  # pylint: disable=redefined-outer-name,unused
 
     Returns a WebApiBackend instance connected to DataLab.
     Cleans up objects before and after each test to prevent contamination.
+
+    Skips test if running in standalone-only mode.
     """
+    # Skip if standalone-only mode (no DataLab available)
+    if request.config.getoption("--standalone-only"):
+        pytest.skip(
+            "WebApiBackend tests require DataLab (skipped in standalone-only mode)"
+        )
+
     # pylint: disable=import-outside-toplevel
     from datalab_kernel.backends.webapi import WebApiBackend
 
