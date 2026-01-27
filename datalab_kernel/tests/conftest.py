@@ -309,7 +309,7 @@ _datalab_start_failed = False
 
 
 @pytest.fixture(scope="session")
-def auto_datalab(request, datalab_instance):  # pylint: disable=redefined-outer-name,unused-argument
+def auto_datalab(request, datalab_instance):  # pylint: disable=W0621,W0613
     """Lazy DataLab starter - starts DataLab when first live test runs.
 
     This fixture is automatically used by live tests in default mode.
@@ -363,7 +363,7 @@ def auto_datalab(request, datalab_instance):  # pylint: disable=redefined-outer-
 
 
 @pytest.fixture
-def live_workspace(auto_datalab):  # pylint: disable=redefined-outer-name
+def live_workspace(auto_datalab):  # pylint: disable=W0621,W0613
     """Create a live workspace connected to DataLab.
 
     In default mode: Automatically starts DataLab when first used.
@@ -387,7 +387,7 @@ def live_workspace(auto_datalab):  # pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
-def webapi_backend(request, auto_datalab):  # pylint: disable=redefined-outer-name,unused-argument
+def webapi_backend(request, auto_datalab):  # pylint: disable=W0621,W0613
     """Function-scoped fixture providing a WebApiBackend connected to DataLab.
 
     In default mode: Uses auto-started DataLab.
