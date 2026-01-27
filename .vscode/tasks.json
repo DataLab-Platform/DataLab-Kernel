@@ -48,21 +48,63 @@
             }
         },
         {
-            "label": "📊 Coverage",
+            "label": "🧪 Coverage tests",
             "type": "shell",
             "command": "${command:python.interpreterPath}",
             "args": [
+                "scripts/run_with_env.py",
+                "${command:python.interpreterPath}",
+                "-m",
+                "coverage",
+                "run",
                 "-m",
                 "pytest",
                 "datalab_kernel/tests/",
-                "--cov=datalab_kernel",
-                "--cov-report=term-missing",
-                "--cov-report=html"
             ],
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "COVERAGE_PROCESS_START": "${workspaceFolder}/.coveragerc",
+                },
+                "statusbar": {
+                    "hide": true,
+                },
             },
-            "group": "build"
+            "group": {
+                "kind": "test",
+                "isDefault": true,
+            },
+            "presentation": {
+                "panel": "dedicated",
+            },
+            "problemMatcher": [],
+        },
+        {
+            "label": "📊 Coverage full",
+            "type": "shell",
+            "windows": {
+                "command": "${command:python.interpreterPath} -m coverage combine && ${command:python.interpreterPath} -m coverage html && start htmlcov\\index.html",
+            },
+            "linux": {
+                "command": "${command:python.interpreterPath} -m coverage combine && ${command:python.interpreterPath} -m coverage html && xdg-open htmlcov/index.html",
+            },
+            "osx": {
+                "command": "${command:python.interpreterPath} -m coverage combine && ${command:python.interpreterPath} -m coverage html && open htmlcov/index.html",
+            },
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "COVERAGE_PROCESS_START": "${workspaceFolder}/.coveragerc",
+                },
+            },
+            "presentation": {
+                "panel": "dedicated",
+            },
+            "problemMatcher": [],
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "🧪 Coverage tests",
+            ],
         },
         {
             "label": "🔧 Install Kernel",
@@ -95,23 +137,134 @@
             "group": "build"
         },
         {
-            "label": "📚 Build documentation",
+            "label": "🧹 Clean Up",
             "type": "shell",
             "command": "${command:python.interpreterPath}",
             "args": [
+                "scripts/run_with_env.py",
+                "${command:python.interpreterPath}",
                 "-m",
-                "sphinx",
-                "build",
-                "doc",
-                "build/doc",
-                "-b",
-                "html",
-                "-W"
+                "guidata.utils.cleanup"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "group": "build"
-        }
-    ]
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false,
+            },
+        },
+        {
+            "label": "📚 Build documentation",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "scripts/run_with_env.py",
+                "${command:python.interpreterPath}",
+                "-m",
+                "sphinx",
+                "build",
+                "doc",
+                "${workspaceFolder}/build/doc",
+                "-b",
+                "html",
+                "-D",
+                "language=fr",
+                // "-W",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+            },
+            "presentation": {
+                "clear": true,
+                "echo": true,
+                "focus": false,
+                "panel": "dedicated",
+                "reveal": "always",
+                "showReuseMessage": true,
+            },
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Generate requirements",
+            ],
+        },
+        {
+            "label": "🌐 Open HTML doc",
+            "type": "shell",
+            "windows": {
+                "command": "start build/doc/index.html",
+            },
+            "linux": {
+                "command": "xdg-open build/doc/index.html",
+            },
+            "osx": {
+                "command": "open build/doc/index.html",
+            },
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "problemMatcher": [],
+        },
+        {
+            "label": "📦 Build package",
+            "type": "shell",
+            "command": "${command:python.interpreterPath}",
+            "args": [
+                "scripts/run_with_env.py",
+                "${command:python.interpreterPath}",
+                "-m",
+                "guidata.utils.securebuild",
+                "--prebuild",
+                "python -m guidata.utils.translations compile --name sigima --directory .",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false,
+            },
+            "presentation": {
+                "clear": true,
+                "panel": "dedicated",
+            },
+            "problemMatcher": [],
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "🧹 Clean Up",
+            ],
+        },
+        {
+            "label": "❔ Untracked files",
+            "type": "shell",
+            "command": "git ls-files --others | Where-Object { $_ -notmatch '^\\.' -and $_ -notmatch '^(build|dist|releases)/' -and $_ -notmatch '.(pyc|mo)$'}",
+            "options": {
+                "cwd": "${workspaceFolder}",
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": true,
+                "clear": true,
+            },
+        },
+    ],
 }
