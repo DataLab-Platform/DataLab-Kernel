@@ -304,6 +304,10 @@ def datalab_instance(request):
 _lazy_datalab_started = False
 
 
+# Track if we've detected that DataLab cannot be started (CI environment)
+_datalab_start_failed = False
+
+
 @pytest.fixture(scope="session")
 def auto_datalab(request, datalab_instance):  # pylint: disable=redefined-outer-name,unused-argument
     """Lazy DataLab starter - starts DataLab when first live test runs.
@@ -312,8 +316,10 @@ def auto_datalab(request, datalab_instance):  # pylint: disable=redefined-outer-
     It ensures DataLab is started only after standalone tests complete.
 
     Also sets environment variables for WebAPI connection.
+
+    In CI environments (no display), skips tests gracefully instead of failing.
     """
-    global _lazy_datalab_started  # pylint: disable=global-statement
+    global _lazy_datalab_started, _datalab_start_failed  # pylint: disable=global-statement
 
     standalone_only = request.config.getoption("--standalone-only")
     explicit_start = request.config.getoption("--start-datalab")
@@ -321,7 +327,11 @@ def auto_datalab(request, datalab_instance):  # pylint: disable=redefined-outer-
 
     # Don't start if standalone-only mode
     if standalone_only:
-        return
+        pytest.skip("Live tests skipped in standalone-only mode")
+
+    # If we previously failed to start DataLab (e.g., CI environment), skip
+    if _datalab_start_failed:
+        pytest.skip("DataLab not available (previous start attempt failed)")
 
     # Set environment variables for WebAPI connection
     # These are used by WebApiBackend to find the server
@@ -339,7 +349,14 @@ def auto_datalab(request, datalab_instance):  # pylint: disable=redefined-outer-
         print("🚀 Starting DataLab for live tests...")
         print("=" * 70)
         if not _is_datalab_running():
-            _start_datalab()
+            try:
+                _start_datalab()
+            except RuntimeError as exc:
+                # Failed to start DataLab - likely CI environment without display
+                _datalab_start_failed = True
+                pytest.skip(
+                    f"DataLab cannot be started (CI/headless environment?): {exc}"
+                )
             # _start_datalab() already waits for WebAPI to be ready
         print("✅ DataLab ready for live tests")
         print("=" * 70 + "\n")

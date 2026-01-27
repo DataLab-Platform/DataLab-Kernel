@@ -304,8 +304,13 @@ class TestWebApiBackendIntegration:
         webapi_backend.remove("webapi_test_image")
 
 
+@pytest.mark.webapi
+@pytest.mark.integration
 class TestWebApiBackendSpecialCharacters:
-    """Test handling of special characters in object names."""
+    """Test handling of special characters in object names.
+
+    These tests require DataLab with WebAPI running.
+    """
 
     def test_url_encoding_special_chars(self, webapi_backend):
         """Test that special characters in names are properly URL-encoded."""
