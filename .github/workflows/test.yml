@@ -51,25 +51,26 @@ jobs:
 
     - name: Install DataLab and dependencies
       run: |
+        # TODO: Restore PyPI installation for main branch once feature/webapi is merged
+        # Clone and install development versions (using feature/webapi branch)
+        cd ..
+        git clone --depth 1 https://github.com/PlotPyStack/PythonQwt.git
         if [ "${{ github.ref_name }}" = "develop" ]; then
-          # Clone and install development versions
-          cd ..
-          git clone --depth 1 https://github.com/PlotPyStack/PythonQwt.git
           git clone --depth 1 --branch develop https://github.com/PlotPyStack/guidata.git
           git clone --depth 1 --branch develop https://github.com/PlotPyStack/plotpy.git
           git clone --depth 1 --branch develop https://github.com/DataLab-Platform/sigima.git
-          # TODO: Switch back to 'develop' branch once feature/webapi is merged
-          git clone --depth 1 --branch feature/webapi https://github.com/DataLab-Platform/DataLab.git
-          cd DataLab-Kernel
-          pip install -e ../guidata
-          pip install -e ../PythonQwt
-          pip install -e ../plotpy
-          pip install -e ../sigima
-          pip install -e ../DataLab
         else
-          # Install from PyPI for main branch
-          pip install datalab-platform
+          git clone --depth 1 https://github.com/PlotPyStack/guidata.git
+          git clone --depth 1 https://github.com/PlotPyStack/plotpy.git
+          git clone --depth 1 https://github.com/DataLab-Platform/sigima.git
         fi
+        git clone --depth 1 --branch feature/webapi https://github.com/DataLab-Platform/DataLab.git
+        cd DataLab-Kernel
+        pip install -e ../guidata
+        pip install -e ../PythonQwt
+        pip install -e ../plotpy
+        pip install -e ../sigima
+        pip install -e ../DataLab
 
     - name: Install DataLab-Kernel
       run: |
