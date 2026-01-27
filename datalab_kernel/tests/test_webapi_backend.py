@@ -11,10 +11,18 @@ Unit tests for the WebApiBackend and NPZ serialization.
 from __future__ import annotations
 
 import io
+import re
 import zipfile
 
 import numpy as np
 import pytest
+from sigima import ImageObj, SignalObj
+
+from datalab_kernel.backends.webapi import WebApiBackend
+from datalab_kernel.serialization_npz import (
+    deserialize_object_from_npz,
+    serialize_object_to_npz,
+)
 
 
 class TestNPZSerialization:
@@ -22,13 +30,6 @@ class TestNPZSerialization:
 
     def test_signal_round_trip(self):
         """Test serializing and deserializing a SignalObj."""
-        from sigima import SignalObj
-
-        from datalab_kernel.serialization_npz import (
-            deserialize_object_from_npz,
-            serialize_object_to_npz,
-        )
-
         # Create a signal
         x = np.linspace(0, 10, 100)
         y = np.sin(x)
@@ -67,13 +68,6 @@ class TestNPZSerialization:
 
     def test_signal_with_uncertainties(self):
         """Test signal with dx/dy uncertainties."""
-        from sigima import SignalObj
-
-        from datalab_kernel.serialization_npz import (
-            deserialize_object_from_npz,
-            serialize_object_to_npz,
-        )
-
         x = np.linspace(0, 10, 50)
         y = np.cos(x)
         dx = np.ones_like(x) * 0.01
@@ -91,13 +85,6 @@ class TestNPZSerialization:
 
     def test_image_round_trip(self):
         """Test serializing and deserializing an ImageObj."""
-        from sigima import ImageObj
-
-        from datalab_kernel.serialization_npz import (
-            deserialize_object_from_npz,
-            serialize_object_to_npz,
-        )
-
         # Create an image
         data = np.random.rand(128, 128).astype(np.float32)
         obj = ImageObj()
@@ -135,13 +122,6 @@ class TestNPZSerialization:
 
     def test_image_preserves_dtype(self):
         """Test that image dtype is preserved through serialization."""
-        from sigima import ImageObj
-
-        from datalab_kernel.serialization_npz import (
-            deserialize_object_from_npz,
-            serialize_object_to_npz,
-        )
-
         for dtype in [np.uint8, np.uint16, np.float32, np.float64]:
             obj = ImageObj()
             obj.data = np.random.randint(0, 255, (64, 64)).astype(dtype)
@@ -160,8 +140,6 @@ class TestWebApiBackendHelpers:
 
     def test_encode_name_special_characters(self):
         """Test URL encoding of names with special characters."""
-        from datalab_kernel.backends.webapi import WebApiBackend
-
         # Create a backend instance (we won't actually connect)
         backend = WebApiBackend.__new__(WebApiBackend)
 
@@ -183,8 +161,6 @@ class TestWebApiBackendHelpers:
 
     def test_short_id_pattern_matching(self):
         """Test short ID pattern detection (no server)."""
-        import re
-
         # The pattern from the implementation
         pattern = r"^([si])(\d{3})$"
 
@@ -224,6 +200,7 @@ class TestWorkspaceBackendSelection:
         monkeypatch.delenv("DATALAB_WORKSPACE_TOKEN", raising=False)
         monkeypatch.delenv("DATALAB_KERNEL_MODE", raising=False)
 
+        # pylint: disable=import-outside-toplevel
         from datalab_kernel.workspace import StandaloneBackend, Workspace, WorkspaceMode
 
         ws = Workspace()
@@ -237,6 +214,7 @@ class TestWorkspaceBackendSelection:
         monkeypatch.setenv("DATALAB_WORKSPACE_URL", "http://127.0.0.1:9999")
         monkeypatch.setenv("DATALAB_WORKSPACE_TOKEN", "test-token")
 
+        # pylint: disable=import-outside-toplevel
         from datalab_kernel.workspace import StandaloneBackend, Workspace, WorkspaceMode
 
         ws = Workspace()
@@ -249,6 +227,7 @@ class TestWorkspaceBackendSelection:
         monkeypatch.delenv("DATALAB_WORKSPACE_URL", raising=False)
         monkeypatch.setenv("DATALAB_KERNEL_MODE", "standalone")
 
+        # pylint: disable=import-outside-toplevel
         from datalab_kernel.workspace import Workspace
 
         ws = Workspace()
@@ -278,8 +257,6 @@ class TestWebApiBackendIntegration:
 
     def test_add_and_get_signal(self, webapi_backend):
         """Test adding and retrieving a signal."""
-        from sigima import SignalObj
-
         # Create a signal
         x = np.linspace(0, 10, 100)
         y = np.sin(x)
@@ -304,8 +281,6 @@ class TestWebApiBackendIntegration:
 
     def test_add_and_get_image(self, webapi_backend):
         """Test adding and retrieving an image."""
-        from sigima import ImageObj
-
         # Create an image
         data = np.random.rand(64, 64).astype(np.float32)
         obj = ImageObj()
@@ -332,8 +307,6 @@ class TestWebApiBackendSpecialCharacters:
 
     def test_url_encoding_special_chars(self, webapi_backend):
         """Test that special characters in names are properly URL-encoded."""
-        from sigima import SignalObj
-
         # Create a signal with special characters in name
         x = np.linspace(0, 10, 50)
         y = np.sin(x)
@@ -359,8 +332,6 @@ class TestWebApiBackendSpecialCharacters:
 
     def test_short_id_resolution(self, webapi_backend):
         """Test that short IDs (s001, i001) resolve to object names."""
-        from sigima import ImageObj, SignalObj
-
         # Create test objects
         signal = SignalObj()
         signal.set_xydata(np.arange(10), np.arange(10))

@@ -187,7 +187,8 @@ def _start_webapi_server():
         status = proxy.get_webapi_status()
         if not status.get("available"):
             raise RuntimeError(
-                "WebAPI not available. Install with: pip install datalab-platform[webapi]"
+                "WebAPI not available. "
+                "Install with: pip install datalab-platform[webapi]"
             )
 
         # Start WebAPI server if not already running
@@ -280,6 +281,7 @@ def webapi_backend(
     if not request.config.getoption("--webapi"):
         pytest.skip("Need --webapi option to run")
 
+    # pylint: disable=import-outside-toplevel
     from datalab_kernel.backends.webapi import WebApiBackend
 
     return WebApiBackend()
