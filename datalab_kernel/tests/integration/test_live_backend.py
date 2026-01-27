@@ -2,10 +2,10 @@
 # See LICENSE file for details
 
 """
-Integration tests for LiveBackend with a running DataLab instance.
+Integration tests for live DataLab connection.
 
-These tests verify that the LiveBackend correctly communicates with
-DataLab via the RemoteProxy XML-RPC interface.
+These tests verify that the workspace correctly communicates with DataLab
+via the Web API (preferred) or XML-RPC interface.
 """
 # pylint: disable=redefined-outer-name,unused-argument,import-outside-toplevel
 
@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from sigima import create_image, create_signal
 
-from datalab_kernel.workspace import LiveBackend, Workspace, WorkspaceMode
+from datalab_kernel.workspace import Workspace, WorkspaceMode
 
 
 def require_datalab():
@@ -32,22 +32,43 @@ def require_datalab():
         pytest.skip("DataLab not running or not available")
 
 
+def is_webapi_backend(workspace: Workspace) -> bool:
+    """Check if workspace is using WebApiBackend."""
+    from datalab_kernel.backends.webapi import WebApiBackend
+
+    # pylint: disable=protected-access
+    return isinstance(workspace._backend, WebApiBackend)
+
+
+def require_livebackend(workspace: Workspace):
+    """Skip test if not using LiveBackend (XML-RPC).
+
+    Some tests require the XML-RPC proxy which is only available
+    with LiveBackend, not WebApiBackend.
+    """
+    if is_webapi_backend(workspace):
+        pytest.skip("Test requires LiveBackend (XML-RPC), but using WebApiBackend")
+
+
 @pytest.fixture
 def live_workspace(datalab_instance):
     """Create a live workspace connected to DataLab.
 
     Depends on datalab_instance fixture to ensure DataLab is started
     when --start-datalab is provided.
+
+    Uses Workspace() with auto-detection, which will prefer WebAPI
+    if DATALAB_WORKSPACE_URL is set (as configured by conftest.py).
     """
     require_datalab()
-    backend = LiveBackend()
+    workspace = Workspace()
+    assert workspace.mode == WorkspaceMode.LIVE, "Expected live mode"
     # Clear DataLab before each test
-    backend.proxy.reset_all()
-    workspace = Workspace(backend=backend)
+    workspace.clear()
     yield workspace
     # Cleanup after test
     with contextlib.suppress(Exception):
-        backend.proxy.reset_all()
+        workspace.clear()
 
 
 @pytest.mark.live
@@ -57,11 +78,13 @@ class TestLiveBackendConnection:
     def test_connect_to_datalab(self, datalab_instance):
         """Test that we can connect to a running DataLab instance."""
         require_datalab()
-        backend = LiveBackend()
-        assert backend.proxy is not None
-        version = backend.proxy.get_version()
-        assert version is not None
-        assert isinstance(version, str)
+        workspace = Workspace()
+        assert workspace.mode == WorkspaceMode.LIVE
+        # Verify we can call a method
+        status = workspace.status()
+        assert status["mode"] == "live"
+        # Should be using WebApiBackend when started with --start-datalab
+        assert "WebApiBackend" in status.get("backend", "")
 
     def test_workspace_mode_detection(self, datalab_instance):
         """Test that workspace correctly detects live mode."""
@@ -238,8 +261,14 @@ class TestLiveWorkspaceCalc:
     """Test computation features via DataLab."""
 
     def test_calc_normalize(self, live_workspace):
-        """Test calling normalize computation."""
+        """Test calling normalize computation.
+
+        This test requires LiveBackend (XML-RPC) because it uses proxy.select_objects().
+        """
         import sigima.params
+
+        # This test requires XML-RPC proxy for selection
+        require_livebackend(live_workspace)
 
         # Create signal with values > 1
         x = np.linspace(0, 10, 100)
@@ -288,10 +317,17 @@ class TestStandaloneModeRestrictions:
 
 @pytest.mark.live
 class TestLiveWorkspaceProxyAccess:
-    """Test direct proxy access for advanced operations."""
+    """Test direct proxy access for advanced operations.
+
+    These tests require LiveBackend (XML-RPC) because they use the proxy
+    property which is only available with the RemoteProxy interface.
+    """
 
     def test_proxy_access(self, live_workspace):
         """Test accessing proxy for advanced operations."""
+        # This test requires XML-RPC proxy
+        require_livebackend(live_workspace)
+
         proxy = live_workspace.proxy
         assert proxy is not None
 
