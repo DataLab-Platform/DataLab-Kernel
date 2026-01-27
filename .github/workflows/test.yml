@@ -70,7 +70,7 @@ jobs:
         pip install -e ../PythonQwt
         pip install -e ../plotpy
         pip install -e ../sigima
-        pip install -e ../DataLab
+        pip install -e ../DataLab[webapi]
 
     - name: Install DataLab-Kernel
       run: |
