@@ -371,12 +371,27 @@ def live_workspace(auto_datalab):  # pylint: disable=W0621,W0613
 
     Uses Workspace() with auto-detection, which will prefer WebAPI
     if DATALAB_WORKSPACE_URL is set (configured by auto_datalab fixture).
+
+    Skips test if connection fails.
     """
+    global _datalab_start_failed  # pylint: disable=global-statement
+
+    # Skip if DataLab start failed previously
+    if _datalab_start_failed:
+        pytest.skip("DataLab not available (previous start attempt failed)")
+
     # pylint: disable=import-outside-toplevel
     from datalab_kernel.workspace import Workspace, WorkspaceMode
 
-    workspace = Workspace()
-    assert workspace.mode == WorkspaceMode.LIVE, "Expected live mode"
+    try:
+        workspace = Workspace()
+    except ConnectionError as exc:
+        _datalab_start_failed = True
+        pytest.skip(f"Cannot connect to DataLab: {exc}")
+
+    if workspace.mode != WorkspaceMode.LIVE:
+        pytest.skip("Expected live mode but got standalone (DataLab not available)")
+
     # Clear DataLab before test (with error handling)
     with contextlib.suppress(Exception):
         workspace.clear()
@@ -396,18 +411,30 @@ def webapi_backend(request, auto_datalab):  # pylint: disable=W0621,W0613
     Returns a WebApiBackend instance connected to DataLab.
     Cleans up objects before and after each test to prevent contamination.
 
-    Skips test if running in standalone-only mode.
+    Skips test if running in standalone-only mode or if connection fails.
     """
+    global _datalab_start_failed  # pylint: disable=global-statement
+
     # Skip if standalone-only mode (no DataLab available)
     if request.config.getoption("--standalone-only"):
         pytest.skip(
             "WebApiBackend tests require DataLab (skipped in standalone-only mode)"
         )
 
+    # Skip if DataLab start failed previously
+    if _datalab_start_failed:
+        pytest.skip("DataLab not available (previous start attempt failed)")
+
     # pylint: disable=import-outside-toplevel
     from datalab_kernel.backends.webapi import WebApiBackend
 
-    backend = WebApiBackend()
+    try:
+        backend = WebApiBackend()
+    except ConnectionError as exc:
+        # Connection failed - mark as failed and skip
+        _datalab_start_failed = True
+        pytest.skip(f"Cannot connect to DataLab WebAPI: {exc}")
+
     # Clear before test
     with contextlib.suppress(Exception):
         backend.clear()
