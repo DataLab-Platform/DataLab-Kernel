@@ -82,10 +82,10 @@ jobs:
     - name: Lint with Ruff
       run: ruff check --output-format=github datalab_kernel
 
-    - name: Run unit tests
-      run: pytest datalab_kernel/tests/unit datalab_kernel/tests/contract -v --tb=long
+    - name: Run standalone tests
+      run: pytest --standalone-only -v --tb=long
 
-    - name: Run live integration tests
+    - name: Run all tests
       run: |
         # Run integration tests with DataLab auto-start
-        pytest --live --start-datalab datalab_kernel/tests/integration -v --tb=long
+        pytest -v --tb=long
