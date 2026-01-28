@@ -93,15 +93,48 @@ Two connection methods are supported:
 
 ## Installation
 
-### Standalone usage
+### Standalone usage (desktop Jupyter)
 
 ```bash
-pip install datalab-kernel sigima
+pip install datalab-kernel[cli] sigima
 python -m datalab_kernel install
 jupyter lab
 ```
 
 Then select **DataLab Kernel** from the kernel list.
+
+### JupyterLite
+
+DataLab-Kernel is compatible with **JupyterLite** (browser-based Jupyter).
+In this environment, kernels are bundled at build time, so you load DataLab-Kernel
+as an IPython extension instead.
+
+**1. Add to your `environment.yml`:**
+
+```yaml
+name: xeus-python-kernel
+channels:
+  - https://repo.mamba.pm/emscripten-forge
+  - conda-forge
+dependencies:
+  - numpy
+  - matplotlib
+  - h5py
+  - datalab-kernel
+  - sigima
+```
+
+**2. Load the extension in your notebook:**
+
+```python
+%load_ext datalab_kernel
+```
+
+This injects the DataLab namespace (`workspace`, `plotter`, `sigima`, etc.)
+into your environment.
+
+The `[cli]` extra is not needed in JupyterLite since `jupyter-client` depends
+on `pyzmq`, which requires native sockets unavailable in WebAssembly.
 
 ### Dependencies
 
@@ -118,6 +151,10 @@ The kernel requires:
 - `xeus-python-shell>=0.6.0` - Python shell utilities for xeus-python
 - `sigima>=1.0` - Scientific signal and image processing
 - `numpy>=1.22`, `h5py>=3.0`, `matplotlib>=3.5`
+
+Optional dependency (via `[cli]` extra):
+
+- `jupyter-client>=7.0` - For `install`/`uninstall` CLI commands
 
 ### With DataLab
 

@@ -28,7 +28,6 @@ requires-python = ">=3.9"
 dependencies = [
     "xeus-python>=0.17.0",
     "xeus-python-shell>=0.6.0",
-    "jupyter-client>=7.0",
     "numpy>=1.22",
     "httpx>=0.25.0",
     "h5py>=3.0",
@@ -38,6 +37,9 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+cli = [
+    "jupyter-client>=7.0",  # Only needed for install/uninstall CLI commands
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",

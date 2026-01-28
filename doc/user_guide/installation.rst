@@ -24,9 +24,15 @@ Installing DataLab-Kernel from PyPI:
 
 .. code-block:: console
 
-    $ pip install datalab-kernel
+    $ pip install datalab-kernel[cli]
 
 This will install the kernel and all required dependencies including Sigima.
+
+.. note::
+
+    The ``[cli]`` extra installs ``jupyter-client``, which is required for
+    the ``install``/``uninstall`` CLI commands. See :ref:`install_jupyterlite`
+    for environments where this is not needed.
 
 Installing the Jupyter Kernel
 -----------------------------
@@ -39,6 +45,51 @@ After installing the package, register the kernel with Jupyter:
 
 This makes the "DataLab" kernel available in Jupyter Notebook, JupyterLab,
 and VS Code.
+
+.. _install_jupyterlite:
+
+JupyterLite (browser-based)
+---------------------------
+
+DataLab-Kernel is compatible with **JupyterLite**, a browser-based Jupyter
+environment running on WebAssembly.
+
+In JupyterLite, kernels are bundled at build time and the ``install``/``uninstall``
+commands are not used. Instead, you load DataLab-Kernel as an IPython extension.
+
+**Step 1: Add to your JupyterLite environment**
+
+Create or edit your ``environment.yml``:
+
+.. code-block:: yaml
+
+    name: xeus-python-kernel
+    channels:
+      - https://repo.mamba.pm/emscripten-forge
+      - conda-forge
+    dependencies:
+      - numpy
+      - matplotlib
+      - h5py
+      - datalab-kernel
+      - sigima
+
+**Step 2: Load the extension in your notebook**
+
+In the first cell of your notebook, load the extension:
+
+.. code-block:: python
+
+    %load_ext datalab_kernel
+
+This injects the DataLab namespace (``workspace``, ``plotter``, ``sigima``, etc.)
+into your environment, just like the native kernel does.
+
+**Why no ``[cli]`` extra?**
+
+The ``[cli]`` extra includes ``jupyter-client``, which depends on ``pyzmq`` (ZeroMQ).
+Since ZeroMQ requires native sockets unavailable in WebAssembly environments,
+this dependency is not needed in JupyterLite.
 
 Optional: DataLab Integration
 -----------------------------

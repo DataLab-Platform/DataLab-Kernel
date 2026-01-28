@@ -34,6 +34,9 @@ __version__ = "0.2.0"
 __author__ = "DataLab Platform Developers"
 
 from datalab_kernel.plotter import Plotter
+
+# Re-export IPython extension functions for %load_ext datalab_kernel
+from datalab_kernel.startup import load_ipython_extension, unload_ipython_extension
 from datalab_kernel.workspace import Workspace
 
 # Global instances (initialized when kernel starts)
@@ -48,4 +51,6 @@ __all__ = [
     "Plotter",
     "workspace",
     "plotter",
+    "load_ipython_extension",
+    "unload_ipython_extension",
 ]

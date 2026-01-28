@@ -87,6 +87,63 @@ def run_startup():
         raise
 
 
+# =============================================================================
+# IPython Extension API
+# =============================================================================
+# These functions allow datalab_kernel to be loaded as an IPython extension,
+# which is the recommended way to use it in JupyterLite environments.
+#
+# Usage in IPython/Jupyter:
+#   %load_ext datalab_kernel
+#
+# Or configure auto-loading in ipython_config.py:
+#   c.InteractiveShellApp.extensions = ['datalab_kernel']
+# =============================================================================
+
+
+def load_ipython_extension(ipython):
+    """Load the DataLab kernel extension.
+
+    This function is called by IPython when the extension is loaded via:
+        %load_ext datalab_kernel
+
+    It injects the DataLab namespace (workspace, plotter, sigima, etc.)
+    into the user's interactive environment.
+
+    This is the recommended way to use DataLab-Kernel in JupyterLite,
+    where the traditional kernel installation mechanism doesn't apply.
+
+    Args:
+        ipython: The active IPython shell instance.
+    """
+    namespace = setup_namespace()
+    ipython.user_ns.update(namespace)
+    logger.info("DataLab extension loaded successfully")
+
+
+def unload_ipython_extension(ipython):
+    """Unload the DataLab kernel extension.
+
+    This function is called by IPython when the extension is unloaded.
+    It removes the DataLab namespace from the user's environment.
+
+    Args:
+        ipython: The active IPython shell instance.
+    """
+    # List of names we injected
+    names_to_remove = [
+        "workspace",
+        "plotter",
+        "np",
+        "sigima",
+        "create_signal",
+        "create_image",
+    ]
+    for name in names_to_remove:
+        ipython.user_ns.pop(name, None)
+    logger.info("DataLab extension unloaded")
+
+
 # When this module is imported as a startup script, run the startup
 if __name__ == "__main__":
     run_startup()

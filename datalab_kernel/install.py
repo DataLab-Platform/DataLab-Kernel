@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -99,20 +100,37 @@ def get_kernel_dir(user: bool = True) -> Path:
     Returns:
         Path to kernel directory
     """
-    # Delayed import to avoid dependency at module load time
-    # pylint: disable=import-outside-toplevel
-    from jupyter_client.kernelspec import KernelSpecManager
+    try:
+        # Delayed import to avoid dependency at module load time
+        # pylint: disable=import-outside-toplevel
+        from jupyter_client.kernelspec import KernelSpecManager
 
-    ksm = KernelSpecManager()
+        ksm = KernelSpecManager()
 
-    if user:
-        # User kernels directory
-        data_dir = Path(ksm.user_kernel_dir)
-    else:
-        # System kernels directory (first one in path)
-        data_dir = Path(ksm.kernel_dirs[0]) if ksm.kernel_dirs else None
-        if data_dir is None:
-            raise RuntimeError("Could not find system kernel directory")
+        if user:
+            # User kernels directory
+            data_dir = Path(ksm.user_kernel_dir)
+        else:
+            # System kernels directory (first one in path)
+            data_dir = Path(ksm.kernel_dirs[0]) if ksm.kernel_dirs else None
+            if data_dir is None:
+                raise RuntimeError("Could not find system kernel directory")
+    except ImportError:
+        # Fallback when jupyter_client is not installed (e.g., JupyterLite)
+        # Use standard Jupyter data directories
+        if user:
+            # Standard user kernel location
+            if os.name == "nt":
+                data_dir = Path.home() / "AppData" / "Roaming" / "jupyter" / "kernels"
+            else:
+                data_dir = Path.home() / ".local" / "share" / "jupyter" / "kernels"
+        else:
+            # Standard system kernel location
+            if os.name == "nt":
+                data_dir = Path(os.environ.get("PROGRAMDATA", "C:/ProgramData"))
+                data_dir = data_dir / "jupyter" / "kernels"
+            else:
+                data_dir = Path("/usr/local/share/jupyter/kernels")
 
     return data_dir / KERNEL_NAME
 
