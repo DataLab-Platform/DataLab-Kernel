@@ -83,6 +83,10 @@ class PyodideHttpClient:
         """Make a synchronous HTTP request using JavaScript XMLHttpRequest.
 
         This works in pyodide because we can call synchronous JS APIs.
+
+        For binary data support, we use overrideMimeType("text/plain; charset=x-user-defined")
+        which forces the browser to treat the response as binary, preserving all byte values.
+        We then convert the response text to bytes using ord(c) & 0xFF for each character.
         """
         import js  # pyodide's JavaScript bridge
 
@@ -101,11 +105,14 @@ class PyodideHttpClient:
         body = None
         if "content" in kwargs:
             body = kwargs["content"]
-            # For binary content, we need to convert to Uint8Array
+            # For binary content, use ArrayBuffer + Uint8Array
+            # Blob doesn't work, and Uint8Array.new(list(...)) fails with std::string error
             if isinstance(body, bytes):
-                import js
-
-                body = js.Uint8Array.new(list(body))
+                buffer = js.ArrayBuffer.new(len(body))
+                view = js.Uint8Array.new(buffer)
+                for i, b in enumerate(body):
+                    view[i] = b
+                body = view
         elif "json" in kwargs:
             body = json.dumps(kwargs["json"])
             xhr.setRequestHeader("Content-Type", "application/json")
@@ -114,6 +121,11 @@ class PyodideHttpClient:
         if "headers" in kwargs:
             for key, value in kwargs["headers"].items():
                 xhr.setRequestHeader(key, value)
+
+        # Force binary mode for response - this is critical for NPZ data
+        # The charset=x-user-defined trick preserves all byte values 0x00-0xFF
+        # in the low byte of each UTF-16 character.
+        xhr.overrideMimeType("text/plain; charset=x-user-defined")
 
         try:
             # Send request
@@ -129,19 +141,11 @@ class PyodideHttpClient:
             raise HttpError(0, "Network error - request blocked or server unreachable")
 
         # Get response content as bytes
-        # Use responseText for text, or response for binary
-        try:
-            # Try to get as bytes via ArrayBuffer
-            if xhr.responseType == "arraybuffer" or hasattr(xhr.response, "byteLength"):
-                import js
-
-                arr = js.Uint8Array.new(xhr.response)
-                content = bytes(arr.to_py())
-            else:
-                # Fall back to text
-                content = (xhr.responseText or "").encode("utf-8")
-        except Exception:
-            content = (xhr.responseText or "").encode("utf-8")
+        # With overrideMimeType("text/plain; charset=x-user-defined"),
+        # each byte is stored in the low byte of a UTF-16 character.
+        # We extract it using ord(c) & 0xFF.
+        response_text = xhr.responseText or ""
+        content = bytes([ord(c) & 0xFF for c in response_text])
 
         # Parse response headers
         response_headers = {}
