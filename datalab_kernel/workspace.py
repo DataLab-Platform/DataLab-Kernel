@@ -16,6 +16,7 @@ The backend is selected automatically at kernel startup.
 
 from __future__ import annotations
 
+import logging
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
@@ -132,6 +133,8 @@ class Workspace:
         1. WebAPI backend if DATALAB_WORKSPACE_URL is set
         2. StandaloneBackend (fallback)
         """
+        logger = logging.getLogger("datalab-kernel")
+
         # Check kernel mode environment variable
         kernel_mode = os.environ.get("DATALAB_KERNEL_MODE", "auto").lower()
 
@@ -148,12 +151,12 @@ class Workspace:
 
                 backend = WebApiBackend()
                 return backend, WorkspaceMode.LIVE
-            except Exception:  # pylint: disable=broad-exception-caught
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                logger.warning(f"Failed to connect to DataLab Web API: {e}")
                 if kernel_mode == "live":
                     # User explicitly requested live mode, raise error
                     raise ConnectionError(
-                        "Failed to connect to DataLab Web API. "
-                        "Check DATALAB_WORKSPACE_URL and DATALAB_WORKSPACE_TOKEN."
+                        f"Failed to connect to DataLab Web API at {webapi_url}: {e}"
                     ) from None
                 # Fall through to standalone
 

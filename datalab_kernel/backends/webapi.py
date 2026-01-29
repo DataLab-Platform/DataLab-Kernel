@@ -34,17 +34,24 @@ from __future__ import annotations
 import contextlib
 import os
 import re
+import time
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
-try:
-    import httpx
-
-    HTTPX_AVAILABLE = True
-except ImportError:
-    HTTPX_AVAILABLE = False
-
+import h5py
+import numpy as np
 from sigima import ImageObj, SignalObj
+
+from datalab_kernel.backends.pyfetch import (
+    HttpError,
+    HttpResponse,
+    create_http_client,
+    is_pyodide,
+)
+from datalab_kernel.serialization_npz import (
+    deserialize_object_from_npz,
+    serialize_object_to_npz,
+)
 
 if TYPE_CHECKING:
     DataObject = SignalObj | ImageObj
@@ -77,14 +84,9 @@ class WebApiBackend:
             timeout: Request timeout in seconds.
 
         Raises:
-            ImportError: If httpx is not installed.
+            ImportError: If httpx is not installed (native Python only).
             ValueError: If URL or token is not provided.
         """
-        if not HTTPX_AVAILABLE:
-            raise ImportError(
-                "httpx is required for WebApiBackend. Install with: pip install httpx"
-            )
-
         self._base_url = base_url or os.environ.get("DATALAB_WORKSPACE_URL")
         self._token = token or os.environ.get("DATALAB_WORKSPACE_TOKEN")
         self._timeout = timeout
@@ -104,12 +106,8 @@ class WebApiBackend:
         # Ensure base URL doesn't have trailing slash
         self._base_url = self._base_url.rstrip("/")
 
-        # Create HTTP client
-        self._client = httpx.Client(
-            base_url=self._base_url,
-            timeout=self._timeout,
-            headers={"Authorization": f"Bearer {self._token}"},
-        )
+        # Create HTTP client (uses pyfetch in pyodide, httpx in native Python)
+        self._client = create_http_client(self._base_url, self._token, self._timeout)
 
         # Verify connection
         self._verify_connection()
@@ -125,9 +123,7 @@ class WebApiBackend:
         Retries up to 10 times with exponential backoff to allow time for
         the Uvicorn server to start accepting connections.
         """
-        import time
-
-        max_retries = 10
+        max_retries = 10 if not is_pyodide() else 3  # Fewer retries in browser
         base_delay = 0.1  # Start with 100ms
 
         for attempt in range(max_retries):
@@ -138,7 +134,7 @@ class WebApiBackend:
                 if not data.get("running"):
                     raise ConnectionError("DataLab Web API is not running")
                 return  # Success!
-            except httpx.HTTPError as e:
+            except HttpError as e:
                 if attempt == max_retries - 1:
                     # Last attempt failed
                     raise ConnectionError(
@@ -148,8 +144,15 @@ class WebApiBackend:
                 # Wait before retrying (exponential backoff)
                 delay = base_delay * (2**attempt)
                 time.sleep(delay)
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise ConnectionError(
+                        f"Failed to connect to DataLab Web API: {e}"
+                    ) from e
+                delay = base_delay * (2**attempt)
+                time.sleep(delay)
 
-    def _raise_for_status(self, response: httpx.Response) -> None:
+    def _raise_for_status(self, response: HttpResponse) -> None:
         """Check response status and raise appropriate exceptions.
 
         Provides user-friendly error messages for common HTTP errors.
@@ -185,9 +188,7 @@ class WebApiBackend:
             except RuntimeError:
                 raise
             except Exception:
-                raise RuntimeError(
-                    f"DataLab server error (HTTP 500). URL: {response.request.url}"
-                ) from None
+                raise RuntimeError("DataLab server error (HTTP 500)") from None
 
         response.raise_for_status()
 
@@ -267,8 +268,6 @@ class WebApiBackend:
         Raises:
             KeyError: If object not found.
         """
-        from datalab_kernel.serialization_npz import deserialize_object_from_npz
-
         # Try to resolve as short ID first
         resolved_name = self._resolve_short_id(name)
         if resolved_name is not None:
@@ -313,8 +312,6 @@ class WebApiBackend:
         Raises:
             ValueError: If object exists and overwrite is False.
         """
-        from datalab_kernel.serialization_npz import serialize_object_to_npz
-
         # Set title on object
         obj.title = name
 
@@ -425,8 +422,6 @@ class WebApiBackend:
             filepath: Path to save HDF5 file.
         """
         # Download all objects and save locally
-        import h5py  # pylint: disable=import-outside-toplevel
-
         if not filepath.endswith(".h5"):
             filepath = filepath + ".h5"
 
@@ -471,8 +466,6 @@ class WebApiBackend:
         Args:
             filepath: Path to HDF5 file.
         """
-        import h5py  # pylint: disable=import-outside-toplevel
-
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"File not found: {filepath}")
 
@@ -485,8 +478,6 @@ class WebApiBackend:
 
     def _load_object_from_group(self, grp, name: str) -> DataObject | None:
         """Load object from HDF5 group."""
-        import numpy as np  # pylint: disable=import-outside-toplevel
-
         obj_type = grp.attrs.get("type", "unknown")
 
         if obj_type == "SignalObj" or ("x" in grp and "y" in grp):
