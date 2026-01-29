@@ -52,129 +52,107 @@ class HttpError(Exception):
 
 
 class PyodideHttpClient:
-    """HTTP client for pyodide using pyfetch."""
+    """HTTP client for pyodide using synchronous XMLHttpRequest.
+
+    In pyodide/JupyterLite, we use JavaScript's synchronous XMLHttpRequest
+    because async pyfetch doesn't work well with synchronous Python code.
+    """
 
     def __init__(self, base_url: str, headers: dict[str, str], timeout: float = 30.0):
         self._base_url = base_url.rstrip("/")
         self._headers = headers
-        self._timeout = timeout
+        self._timeout = int(timeout * 1000)  # Convert to milliseconds
 
     def get(self, path: str, **kwargs) -> HttpResponse:
-        """Synchronous GET request (runs async internally)."""
-        return self._sync_request("GET", path, **kwargs)
+        """Synchronous GET request."""
+        return self._request("GET", path, **kwargs)
 
     def post(self, path: str, **kwargs) -> HttpResponse:
         """Synchronous POST request."""
-        return self._sync_request("POST", path, **kwargs)
+        return self._request("POST", path, **kwargs)
 
     def put(self, path: str, **kwargs) -> HttpResponse:
         """Synchronous PUT request."""
-        return self._sync_request("PUT", path, **kwargs)
+        return self._request("PUT", path, **kwargs)
 
     def delete(self, path: str, **kwargs) -> HttpResponse:
         """Synchronous DELETE request."""
-        return self._sync_request("DELETE", path, **kwargs)
+        return self._request("DELETE", path, **kwargs)
 
-    def _sync_request(self, method: str, path: str, **kwargs) -> HttpResponse:
-        """Make a synchronous request using pyodide's sync pyfetch.
+    def _request(self, method: str, path: str, **kwargs) -> HttpResponse:
+        """Make a synchronous HTTP request using JavaScript XMLHttpRequest.
 
-        In pyodide, we use the synchronous version of pyfetch which is available
-        when running in a WebWorker (like xeus-python kernel).
+        This works in pyodide because we can call synchronous JS APIs.
         """
-        try:
-            # Try using pyodide.http.open_url for GET requests (simpler, sync)
-            if method == "GET" and not kwargs:
-                return self._simple_get(path)
-
-            # For other requests, use the async pyfetch with run_sync
-            return self._run_async_request(method, path, **kwargs)
-
-        except Exception as e:
-            raise HttpError(0, f"Request failed: {e}") from e
-
-    def _simple_get(self, path: str) -> HttpResponse:
-        """Simple synchronous GET using open_url (limited but sync)."""
-        # open_url doesn't support custom headers, so we need pyfetch
-        return self._run_async_request("GET", path)
-
-    def _run_async_request(self, method: str, path: str, **kwargs) -> HttpResponse:
-        """Run async pyfetch in a way that works in pyodide."""
-        import asyncio
-
-        try:
-            # Check if we have pyodide's run_sync helper
-            from pyodide.ffi import run_sync
-
-            return run_sync(self._async_request(method, path, **kwargs))
-        except ImportError:
-            pass
-
-        # Fallback: try to get or create event loop
-        try:
-            loop = asyncio.get_running_loop()
-            # We're in a running loop - use nest_asyncio or create_task
-            import nest_asyncio
-
-            nest_asyncio.apply()
-            return asyncio.get_event_loop().run_until_complete(
-                self._async_request(method, path, **kwargs)
-            )
-        except (RuntimeError, ImportError):
-            # No running loop or no nest_asyncio - just run it
-            try:
-                return asyncio.run(self._async_request(method, path, **kwargs))
-            except RuntimeError:
-                # Last resort: create new loop
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    return loop.run_until_complete(
-                        self._async_request(method, path, **kwargs)
-                    )
-                finally:
-                    loop.close()
-
-    async def _async_request(self, method: str, path: str, **kwargs) -> HttpResponse:
-        """Make an async HTTP request using pyodide's pyfetch."""
-        from pyodide.http import pyfetch
+        import js  # pyodide's JavaScript bridge
 
         url = f"{self._base_url}{path}"
 
-        # Build fetch options
-        fetch_options: dict[str, Any] = {
-            "method": method,
-            "headers": dict(self._headers),
-        }
+        # Create XMLHttpRequest
+        xhr = js.XMLHttpRequest.new()
+        xhr.open(method, url, False)  # False = synchronous
+        xhr.timeout = self._timeout
 
-        # Handle content/data
+        # Set headers
+        for key, value in self._headers.items():
+            xhr.setRequestHeader(key, value)
+
+        # Handle request body
+        body = None
         if "content" in kwargs:
-            fetch_options["body"] = kwargs["content"]
-            if "headers" not in fetch_options:
-                fetch_options["headers"] = {}
-            # Don't set content-type for binary data (NPZ)
+            body = kwargs["content"]
+            # For binary content, we need to convert to Uint8Array
+            if isinstance(body, bytes):
+                import js
+
+                body = js.Uint8Array.new(list(body))
         elif "json" in kwargs:
-            fetch_options["body"] = json.dumps(kwargs["json"])
-            fetch_options["headers"]["Content-Type"] = "application/json"
+            body = json.dumps(kwargs["json"])
+            xhr.setRequestHeader("Content-Type", "application/json")
 
         # Add any extra headers
         if "headers" in kwargs:
-            fetch_options["headers"].update(kwargs["headers"])
+            for key, value in kwargs["headers"].items():
+                xhr.setRequestHeader(key, value)
 
-        # Make the request
-        response = await pyfetch(url, **fetch_options)
+        try:
+            # Send request
+            if body is not None:
+                xhr.send(body)
+            else:
+                xhr.send()
+        except Exception as e:
+            raise HttpError(0, f"Request failed: {e}") from e
 
-        # Get response content
-        content = await response.bytes()
+        # Check for network errors
+        if xhr.status == 0:
+            raise HttpError(0, "Network error - request blocked or server unreachable")
 
-        # Build header dict
+        # Get response content as bytes
+        # Use responseText for text, or response for binary
+        try:
+            # Try to get as bytes via ArrayBuffer
+            if xhr.responseType == "arraybuffer" or hasattr(xhr.response, "byteLength"):
+                import js
+
+                arr = js.Uint8Array.new(xhr.response)
+                content = bytes(arr.to_py())
+            else:
+                # Fall back to text
+                content = (xhr.responseText or "").encode("utf-8")
+        except Exception:
+            content = (xhr.responseText or "").encode("utf-8")
+
+        # Parse response headers
         response_headers = {}
-        # pyfetch response has headers as a dict-like object
-        if hasattr(response, "headers"):
-            for key in response.headers:
-                response_headers[key.lower()] = response.headers.get(key)
+        header_str = xhr.getAllResponseHeaders() or ""
+        for line in header_str.split("\r\n"):
+            if ": " in line:
+                key, value = line.split(": ", 1)
+                response_headers[key.lower()] = value
 
         return HttpResponse(
-            status_code=response.status,
+            status_code=xhr.status,
             content=content,
             headers=response_headers,
         )

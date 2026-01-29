@@ -34,7 +34,6 @@ from __future__ import annotations
 import contextlib
 import os
 import re
-import time
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
@@ -123,7 +122,9 @@ class WebApiBackend:
         Retries up to 10 times with exponential backoff to allow time for
         the Uvicorn server to start accepting connections.
         """
-        max_retries = 10 if not is_pyodide() else 3  # Fewer retries in browser
+        # In pyodide (browser), we can't use time.sleep and should retry fewer times
+        in_pyodide = is_pyodide()
+        max_retries = 1 if in_pyodide else 10  # Single attempt in browser
         base_delay = 0.1  # Start with 100ms
 
         for attempt in range(max_retries):
@@ -141,16 +142,22 @@ class WebApiBackend:
                         f"Failed to connect to DataLab Web API after {max_retries} attempts: {e}"
                     ) from e
 
-                # Wait before retrying (exponential backoff)
-                delay = base_delay * (2**attempt)
-                time.sleep(delay)
+                # Wait before retrying (only in native Python)
+                if not in_pyodide:
+                    import time
+
+                    delay = base_delay * (2**attempt)
+                    time.sleep(delay)
             except Exception as e:
                 if attempt == max_retries - 1:
                     raise ConnectionError(
                         f"Failed to connect to DataLab Web API: {e}"
                     ) from e
-                delay = base_delay * (2**attempt)
-                time.sleep(delay)
+                if not in_pyodide:
+                    import time
+
+                    delay = base_delay * (2**attempt)
+                    time.sleep(delay)
 
     def _raise_for_status(self, response: HttpResponse) -> None:
         """Check response status and raise appropriate exceptions.
