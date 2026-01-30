@@ -254,6 +254,66 @@ def _get_geometry_coord_labels(geometry) -> list[str]:
     ]
 
 
+def _get_image_extent_and_aspect(obj) -> tuple[list[float], float]:
+    """Compute matplotlib extent and aspect ratio from image physical coordinates.
+
+    DataLab images use physical coordinates defined by:
+    - x0, y0: Origin (center of top-left pixel)
+    - dx, dy: Pixel spacing
+
+    For matplotlib's imshow:
+    - extent defines pixel edges: [left, right, bottom, top]
+    - aspect ratio is dx/dy to preserve physical proportions
+
+    With origin="upper", matplotlib expects:
+    - extent = [xmin - dx/2, xmax + dx/2, ymax + dy/2, ymin - dy/2]
+
+    Args:
+        obj: ImageObj with physical coordinate attributes
+
+    Returns:
+        Tuple of (extent, aspect_ratio) where:
+        - extent: [left, right, bottom, top] for imshow
+        - aspect_ratio: dx/dy for proper physical display
+    """
+    # Get image shape
+    nrows, ncols = obj.data.shape[:2]
+
+    # Check if image has physical coordinates
+    has_coords = hasattr(obj, "x0") and hasattr(obj, "dx")
+
+    if has_coords:
+        x0 = getattr(obj, "x0", 0.0)
+        y0 = getattr(obj, "y0", 0.0)
+        dx = getattr(obj, "dx", 1.0)
+        dy = getattr(obj, "dy", 1.0)
+
+        # Compute pixel centers range (as in Sigima)
+        xmin = x0  # Center of leftmost column
+        xmax = x0 + (ncols - 1) * dx  # Center of rightmost column
+        ymin = y0  # Center of topmost row
+        ymax = y0 + (nrows - 1) * dy  # Center of bottommost row
+
+        # Convert to pixel edges for matplotlib extent
+        # extent = [left, right, bottom, top]
+        # For origin="upper", bottom is ymax and top is ymin
+        left = xmin - dx / 2
+        right = xmax + dx / 2
+        bottom = ymax + dy / 2  # Lower edge of bottom-most pixel
+        top = ymin - dy / 2  # Upper edge of top-most pixel
+
+        extent = [left, right, bottom, top]
+
+        # Aspect ratio preserves physical pixel proportions
+        aspect_ratio = dx / dy
+    else:
+        # No physical coordinates, use pixel indices
+        extent = [-0.5, ncols - 0.5, nrows - 0.5, -0.5]
+        aspect_ratio = 1.0
+
+    return extent, aspect_ratio
+
+
 def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
     """Add single ROI overlay to matplotlib axes.
 
@@ -767,14 +827,20 @@ class PlotResult:
             data = np.abs(data)
 
         colormap = self._kwargs.get("colormap", "viridis")
-        im = ax.imshow(data, aspect="auto", origin="upper", cmap=colormap)
+
+        # Compute extent and aspect ratio from physical coordinates
+        extent, aspect_ratio = _get_image_extent_and_aspect(obj)
+
+        im = ax.imshow(
+            data, aspect=aspect_ratio, origin="upper", cmap=colormap, extent=extent
+        )
 
         # Overlay mask if present
         if hasattr(obj, "maskdata") and obj.maskdata is not None:
             mask = obj.maskdata
             mask_rgba = np.zeros((*mask.shape, 4))
             mask_rgba[mask, :] = [1, 0, 0, MASK_OPACITY]
-            ax.imshow(mask_rgba, origin="upper")
+            ax.imshow(mask_rgba, origin="upper", extent=extent)
 
         # Colorbar with label
         zlabel = getattr(obj, "zlabel", None) or ""
@@ -1166,8 +1232,22 @@ class MultiImagePlotResult:
                 data = np.abs(data)
                 img_title = f"|{img_title}|"
 
+            # Compute extent and aspect ratio for ImageObj, use defaults for arrays
+            if is_image_obj:
+                extent, aspect_ratio = _get_image_extent_and_aspect(img)
+            else:
+                nrows_img, ncols_img = data.shape[:2]
+                extent = [-0.5, ncols_img - 0.5, nrows_img - 0.5, -0.5]
+                aspect_ratio = 1.0
+
             # Display image
-            im = ax.imshow(data, cmap=colormap, origin="upper")
+            im = ax.imshow(
+                data,
+                cmap=colormap,
+                origin="upper",
+                aspect=aspect_ratio,
+                extent=extent,
+            )
             ax.set_title(img_title)
 
             # Overlay mask if ImageObj has maskdata
@@ -1175,7 +1255,7 @@ class MultiImagePlotResult:
                 mask = img.maskdata
                 mask_rgba = np.zeros((*mask.shape, 4))
                 mask_rgba[mask, :] = [1, 0, 0, MASK_OPACITY]
-                ax.imshow(mask_rgba, origin="upper")
+                ax.imshow(mask_rgba, origin="upper", extent=extent)
 
             # Add colorbar
             cbar = plt.colorbar(im, ax=ax)
