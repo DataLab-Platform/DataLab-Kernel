@@ -134,15 +134,21 @@ def generate_install_snippet(wheels_dir: Path, port: int) -> str:
         "# Copy this code into a JupyterLite notebook cell:",
         "import micropip",
         "",
+        "# Install dev wheels "
+        "(deps=False skips xeus-python which doesn't work in Pyodide)",
         "await micropip.install([",
     ]
 
     for wheel in sorted(wheels):
         lines.append(f'    "http://localhost:{port}/{wheel.name}",')
 
-    lines.append("])")
+    lines.append("], deps=False)")
     lines.append("")
-    lines.append("# Then restart the kernel and import normally:")
+    lines.append(
+        "# Note: sigima dependencies (numpy, scipy, etc.) "
+        "are already available in JupyterLite"
+    )
+    lines.append("# Then import normally:")
     lines.append("# from sigima import SignalObj, ImageObj")
     lines.append("# from datalab_kernel import Workspace, Plotter")
 
@@ -179,7 +185,7 @@ def serve_wheels(wheels_dir: Path, port: int) -> None:
     print(f"\n{'=' * 60}")
     print(f"Serving wheels at http://localhost:{port}/")
     print(f"{'=' * 60}")
-    print(f"\nAvailable wheels:")
+    print("\nAvailable wheels:")
     for wheel in sorted(wheels_dir.glob("*.whl")):
         print(f"  - {wheel.name}")
 
