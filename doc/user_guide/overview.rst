@@ -7,14 +7,16 @@ What is DataLab-Kernel?
 -----------------------
 
 **DataLab-Kernel** is a Jupyter kernel designed for scientific signal and image
-processing workflows. It provides a bridge between interactive notebook computing
-and the DataLab application, enabling:
+processing workflows. Built on `Xeus-Python <https://github.com/jupyter-xeus/xeus-python>`_,
+a lightweight and efficient Python kernel for Jupyter, it provides a bridge between
+interactive notebook computing and the DataLab application, enabling:
 
 - **Reproducible analysis** in Jupyter notebooks
 - **Seamless integration** with DataLab's GUI-based processing
 - **Flexible workflows** that work with or without DataLab
+- **Cross-platform compatibility** with native Jupyter and JupyterLite (browser-based)
 
-DataLab-Kernel is built on top of `Sigima <https://sigima.readthedocs.io>`_,
+DataLab-Kernel leverages `Sigima <https://sigima.readthedocs.io>`_,
 the computation engine that powers DataLab.
 
 

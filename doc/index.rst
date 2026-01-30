@@ -1,11 +1,14 @@
 DataLab-Kernel
 ==============
 
-**DataLab-Kernel** is a standalone Jupyter kernel for scientific data processing
-with optional live synchronization to `DataLab <https://datalab-platform.com>`_.
+**DataLab-Kernel** is a standalone `Xeus-Python <https://github.com/jupyter-xeus/xeus-python>`_-based
+Jupyter kernel for scientific data processing with optional live synchronization
+to `DataLab <https://datalab-platform.com>`_.
 
-It enables seamless notebook-based workflows for signal and image analysis,
-leveraging the power of `Sigima <https://sigima.readthedocs.io>`_ for computation.
+It runs seamlessly in both **native Jupyter** (JupyterLab, Jupyter Notebook, VS Code)
+and **JupyterLite** (browser-based, no server required), enabling flexible
+notebook-based workflows for signal and image analysis with
+`Sigima <https://sigima.readthedocs.io>`_.
 
 .. code-block:: python
 
