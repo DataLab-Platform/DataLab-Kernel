@@ -56,6 +56,12 @@ class PyodideHttpClient:
 
     In pyodide/JupyterLite, we use JavaScript's synchronous XMLHttpRequest
     because async pyfetch doesn't work well with synchronous Python code.
+
+    PERFORMANCE NOTE (v0.2.5):
+    This implementation uses optimized binary data handling:
+    - responseType="arraybuffer" for efficient binary responses
+    - Direct Uint8Array creation from bytes for efficient uploads
+    - Avoids O(n) Python loops that caused slow image transfers
     """
 
     def __init__(self, base_url: str, headers: dict[str, str], timeout: float = 30.0):
@@ -79,14 +85,48 @@ class PyodideHttpClient:
         """Synchronous DELETE request."""
         return self._request("DELETE", path, **kwargs)
 
+    @staticmethod
+    def _arraybuffer_to_bytes(arraybuffer) -> bytes:
+        """Convert a JavaScript ArrayBuffer to Python bytes efficiently.
+
+        Uses Pyodide's optimized conversion when available, falling back
+        to manual conversion for compatibility.
+
+        Args:
+            arraybuffer: JavaScript ArrayBuffer object
+
+        Returns:
+            Python bytes object
+        """
+        import js  # pyodide's JavaScript bridge
+
+        if arraybuffer is None:
+            return b""
+
+        # Create a Uint8Array view of the ArrayBuffer
+        uint8_view = js.Uint8Array.new(arraybuffer)
+
+        # Use Pyodide's to_py() for efficient conversion if available
+        # This is the fastest path in modern Pyodide versions
+        if hasattr(uint8_view, "to_py"):
+            return bytes(uint8_view.to_py())
+
+        # Fallback: use tobytes() if available (older Pyodide)
+        if hasattr(uint8_view, "tobytes"):
+            return uint8_view.tobytes()
+
+        # Last resort fallback: manual conversion (slow but works)
+        return bytes([uint8_view[i] for i in range(uint8_view.length)])
+
     def _request(self, method: str, path: str, **kwargs) -> HttpResponse:
         """Make a synchronous HTTP request using JavaScript XMLHttpRequest.
 
         This works in pyodide because we can call synchronous JS APIs.
 
-        For binary data support, we use overrideMimeType("text/plain; charset=x-user-defined")
-        which forces the browser to treat the response as binary, preserving all byte values.
-        We then convert the response text to bytes using ord(c) & 0xFF for each character.
+        PERFORMANCE OPTIMIZATION (v1.1):
+        - Uses responseType="arraybuffer" for efficient binary response handling
+        - Uses Uint8Array with memoryview for efficient binary request upload
+        - Avoids O(n) Python loops that were causing slow image transfers
         """
         import js  # pyodide's JavaScript bridge
 
@@ -105,14 +145,10 @@ class PyodideHttpClient:
         body = None
         if "content" in kwargs:
             body = kwargs["content"]
-            # For binary content, use ArrayBuffer + Uint8Array
-            # Blob doesn't work, and Uint8Array.new(list(...)) fails with std::string error
+            # OPTIMIZED: Use Uint8Array.new() with the bytes object directly
+            # Pyodide automatically handles the conversion efficiently
             if isinstance(body, bytes):
-                buffer = js.ArrayBuffer.new(len(body))
-                view = js.Uint8Array.new(buffer)
-                for i, b in enumerate(body):
-                    view[i] = b
-                body = view
+                body = js.Uint8Array.new(body)
         elif "json" in kwargs:
             body = json.dumps(kwargs["json"])
             xhr.setRequestHeader("Content-Type", "application/json")
@@ -122,10 +158,9 @@ class PyodideHttpClient:
             for key, value in kwargs["headers"].items():
                 xhr.setRequestHeader(key, value)
 
-        # Force binary mode for response - this is critical for NPZ data
-        # The charset=x-user-defined trick preserves all byte values 0x00-0xFF
-        # in the low byte of each UTF-16 character.
-        xhr.overrideMimeType("text/plain; charset=x-user-defined")
+        # OPTIMIZED: Use arraybuffer responseType for efficient binary data handling
+        # This avoids the slow text-to-bytes conversion
+        xhr.responseType = "arraybuffer"
 
         try:
             # Send request
@@ -140,12 +175,9 @@ class PyodideHttpClient:
         if xhr.status == 0:
             raise HttpError(0, "Network error - request blocked or server unreachable")
 
-        # Get response content as bytes
-        # With overrideMimeType("text/plain; charset=x-user-defined"),
-        # each byte is stored in the low byte of a UTF-16 character.
-        # We extract it using ord(c) & 0xFF.
-        response_text = xhr.responseText or ""
-        content = bytes([ord(c) & 0xFF for c in response_text])
+        # OPTIMIZED: Get response as bytes directly from ArrayBuffer
+        # This is much faster than the old text-based approach
+        content = self._arraybuffer_to_bytes(xhr.response)
 
         # Parse response headers
         response_headers = {}
