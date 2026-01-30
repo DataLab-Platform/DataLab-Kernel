@@ -10,10 +10,12 @@ It supports inline notebook display and optional DataLab GUI synchronization.
 
 This module provides matplotlib-based visualization for signals and images,
 including support for:
-- Multiple curves on a single plot
+- Multiple signals on a single plot
 - Multiple images in grid layout
 - ROI (Region of Interest) visualization
-- Geometry result overlays (rectangles, circles, ellipses, segments, polygons)
+- Geometry result overlays (points, markers, rectangles, circles, ellipses,
+  segments, polygons)
+- Table result display with rich HTML rendering
 - Mask visualization with semi-transparent overlay
 - Axis labels with units
 """
@@ -31,7 +33,7 @@ if TYPE_CHECKING:
 
     from datalab_kernel.workspace import DataObject, Workspace
 
-# Style configuration for multi-curve/multi-image plots
+# Style configuration for multi-signal/multi-image plots
 COLORS = ["blue", "red", "green", "orange", "purple", "brown", "pink", "gray", "olive"]
 LINESTYLES = ["-", "--", "-.", ":"]
 MASK_OPACITY = 0.35  # Opacity for mask overlay
@@ -107,59 +109,88 @@ def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
 def _add_geometry_to_axes(ax: Axes, result) -> None:
     """Add geometry result overlay to matplotlib axes.
 
+    Iterates over all rows in result.coords to draw each geometric shape.
+    Supports POINT, MARKER, RECTANGLE, CIRCLE, SEGMENT, ELLIPSE, and POLYGON.
+
     Args:
         ax: Matplotlib axes object
-        result: GeometryResult object with shape information
+        result: GeometryResult object with shape information (coords is 2D array)
     """
     # Delayed import
     # pylint: disable=import-outside-toplevel
     from matplotlib import patches
     from sigima.objects import KindShape
 
-    if result.kind == KindShape.RECTANGLE:
-        x0, y0, dx, dy = result.coords
-        rect = patches.Rectangle(
-            (x0, y0),
-            dx,
-            dy,
-            linewidth=2,
-            edgecolor="yellow",
-            facecolor="none",
-            linestyle="--",
-        )
-        ax.add_patch(rect)
-    elif result.kind == KindShape.CIRCLE:
-        xc, yc, r = result.coords
-        circle = patches.Circle(
-            (xc, yc),
-            r,
-            linewidth=2,
-            edgecolor="yellow",
-            facecolor="none",
-            linestyle="--",
-        )
-        ax.add_patch(circle)
-    elif result.kind == KindShape.SEGMENT:
-        x0, y0, x1, y1 = result.coords
-        ax.plot([x0, x1], [y0, y1], "y--", linewidth=2)
-    elif result.kind == KindShape.ELLIPSE:
-        # For ellipse, coords are (xc, yc, a, b, theta)
-        xc, yc, a, b, theta = result.coords
-        ellipse = patches.Ellipse(
-            (xc, yc),
-            2 * a,
-            2 * b,
-            angle=np.degrees(theta),
-            linewidth=2,
-            edgecolor="yellow",
-            facecolor="none",
-            linestyle="--",
-        )
-        ax.add_patch(ellipse)
-    elif result.kind == KindShape.POLYGON:
-        x = result.coords[::2]
-        y = result.coords[1::2]
-        ax.plot(x, y, "y--", linewidth=2, marker="o", markersize=4)
+    # Iterate over all rows in coords (each row is one shape)
+    for coords in result.coords:
+        if result.kind == KindShape.POINT:
+            x0, y0 = coords
+            ax.plot(
+                x0,
+                y0,
+                marker="o",
+                markersize=6,
+                color="yellow",
+                markeredgecolor="black",
+                markeredgewidth=1,
+            )
+        elif result.kind == KindShape.MARKER:
+            x0, y0 = coords
+            # Marker with crosshair style
+            ax.axhline(y0, color="yellow", linestyle="--", linewidth=1, alpha=0.7)
+            ax.axvline(x0, color="yellow", linestyle="--", linewidth=1, alpha=0.7)
+            ax.plot(
+                x0,
+                y0,
+                marker="+",
+                markersize=10,
+                color="yellow",
+                markeredgewidth=2,
+            )
+        elif result.kind == KindShape.RECTANGLE:
+            x0, y0, dx, dy = coords
+            rect = patches.Rectangle(
+                (x0, y0),
+                dx,
+                dy,
+                linewidth=2,
+                edgecolor="yellow",
+                facecolor="none",
+                linestyle="--",
+            )
+            ax.add_patch(rect)
+        elif result.kind == KindShape.CIRCLE:
+            xc, yc, r = coords
+            circle = patches.Circle(
+                (xc, yc),
+                r,
+                linewidth=2,
+                edgecolor="yellow",
+                facecolor="none",
+                linestyle="--",
+            )
+            ax.add_patch(circle)
+        elif result.kind == KindShape.SEGMENT:
+            x0, y0, x1, y1 = coords
+            ax.plot([x0, x1], [y0, y1], "y--", linewidth=2)
+        elif result.kind == KindShape.ELLIPSE:
+            # For ellipse, coords are (xc, yc, a, b, theta)
+            xc, yc, a, b, theta = coords
+            ellipse = patches.Ellipse(
+                (xc, yc),
+                2 * a,
+                2 * b,
+                angle=np.degrees(theta),
+                linewidth=2,
+                edgecolor="yellow",
+                facecolor="none",
+                linestyle="--",
+            )
+            ax.add_patch(ellipse)
+        elif result.kind == KindShape.POLYGON:
+            x = coords[::2]
+            y = coords[1::2]
+            ax.plot(x, y, "y--", linewidth=2, marker="o", markersize=4)
 
 
 class Plotter:
@@ -179,10 +210,18 @@ class Plotter:
         plotter.plot(workspace.get("i042"))
 
         # Plot multiple signals
-        plotter.plot_curves([sig1, sig2, sig3])
+        plotter.plot_signals([sig1, sig2, sig3])
 
         # Plot multiple images
         plotter.plot_images([img1, img2])
+
+        # Display table results (e.g., from statistics computation)
+        result = proxy.compute_statistics()
+        plotter.display_table(result)
+
+        # Display geometry results (e.g., from peak detection)
+        result = proxy.compute_peak_detection()
+        plotter.display_geometry(result)
     """
 
     def __init__(self, workspace: Workspace) -> None:
@@ -225,7 +264,7 @@ class Plotter:
 
         return PlotResult(obj, title=title, show_roi=show_roi, **kwargs)
 
-    def plot_curves(
+    def plot_signals(
         self,
         objs_or_names: list[DataObject | str | np.ndarray | tuple[np.ndarray, ...]],
         title: str | None = None,
@@ -235,8 +274,8 @@ class Plotter:
         yunit: str | None = None,
         show_roi: bool = True,
         **kwargs,
-    ) -> MultiCurvePlotResult:
-        """Plot multiple curves on a single plot.
+    ) -> MultiSignalPlotResult:
+        """Plot multiple signals on a single plot.
 
         Args:
             objs_or_names: List of signals to plot. Can be SignalObj, workspace names,
@@ -250,7 +289,7 @@ class Plotter:
             **kwargs: Additional plotting options
 
         Returns:
-            MultiCurvePlotResult with display capabilities
+            MultiSignalPlotResult with display capabilities
         """
         objs = []
         for obj_or_name in objs_or_names:
@@ -259,7 +298,7 @@ class Plotter:
             else:
                 objs.append(obj_or_name)
 
-        return MultiCurvePlotResult(
+        return MultiSignalPlotResult(
             objs,
             title=title,
             xlabel=xlabel,
@@ -326,6 +365,47 @@ class Plotter:
             results=results,
             **kwargs,
         )
+
+    def display_table(
+        self,
+        result,
+        title: str | None = None,
+        visible_only: bool = True,
+        transpose_single_row: bool = True,
+    ) -> TableResultDisplay:
+        """Display a TableResult with rich HTML rendering.
+
+        Args:
+            result: TableResult object to display
+            title: Optional title override (uses result.title if None)
+            visible_only: If True, show only visible columns based on display prefs
+            transpose_single_row: If True, transpose single-row tables for readability
+
+        Returns:
+            TableResultDisplay with Jupyter display capabilities
+        """
+        return TableResultDisplay(
+            result,
+            title=title,
+            visible_only=visible_only,
+            transpose_single_row=transpose_single_row,
+        )
+
+    def display_geometry(
+        self,
+        result,
+        title: str | None = None,
+    ) -> GeometryResultDisplay:
+        """Display a GeometryResult with rich HTML rendering.
+
+        Args:
+            result: GeometryResult object to display
+            title: Optional title override (uses result.title if None)
+
+        Returns:
+            GeometryResultDisplay with Jupyter display capabilities
+        """
+        return GeometryResultDisplay(result, title=title)
 
 
 class PlotResult:
@@ -529,9 +609,9 @@ class PlotResult:
         return f"PlotResult({obj_type}: {title})"
 
 
-class MultiCurvePlotResult:
+class MultiSignalPlotResult:
     """
-    Result of a multi-curve plot operation with rich display capabilities.
+    Result of a multi-signal plot operation with rich display capabilities.
 
     Supports plotting multiple SignalObj, numpy arrays, or (x, y) tuples
     on a single plot with automatic styling.
@@ -548,7 +628,7 @@ class MultiCurvePlotResult:
         show_roi: bool = True,
         **kwargs,
     ) -> None:
-        """Initialize multi-curve plot result.
+        """Initialize multi-signal plot result.
 
         Args:
             objs: List of objects to display (SignalObj, ndarray, or (x, y) tuples)
@@ -574,7 +654,7 @@ class MultiCurvePlotResult:
         try:
             png_data = self._render_to_png()
             b64_data = base64.b64encode(png_data).decode("utf-8")
-            title = self._title or "Curves"
+            title = self._title or "Signals"
             return f"""
             <div style="text-align: center;">
                 <h4>{title}</h4>
@@ -582,14 +662,14 @@ class MultiCurvePlotResult:
             </div>
             """
         except Exception as e:  # pylint: disable=broad-exception-caught
-            return f"<div>Error rendering curves: {e}</div>"
+            return f"<div>Error rendering signals: {e}</div>"
 
     def _repr_png_(self) -> bytes:
         """Return PNG representation for Jupyter display."""
         return self._render_to_png()
 
     def _render_to_png(self) -> bytes:
-        """Render curves to PNG bytes using matplotlib."""
+        """Render signals to PNG bytes using matplotlib."""
         # pylint: disable=import-outside-toplevel
         import matplotlib
 
@@ -648,7 +728,7 @@ class MultiCurvePlotResult:
                     ydata,
                     color=color,
                     linestyle=linestyle,
-                    label=f"Curve {idx + 1}",
+                    label=f"Signal {idx + 1}",
                 )
 
             elif isinstance(data_or_obj, np.ndarray):
@@ -660,7 +740,7 @@ class MultiCurvePlotResult:
                     ydata,
                     color=color,
                     linestyle=linestyle,
-                    label=f"Curve {idx + 1}",
+                    label=f"Signal {idx + 1}",
                 )
 
             else:
@@ -684,7 +764,7 @@ class MultiCurvePlotResult:
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return f"MultiCurvePlotResult({len(self._objs)} curves)"
+        return f"MultiSignalPlotResult({len(self._objs)} signals)"
 
 
 class MultiImagePlotResult:
@@ -906,3 +986,265 @@ class MultiImagePlotResult:
     def __repr__(self) -> str:
         """Return string representation."""
         return f"MultiImagePlotResult({len(self._objs)} images)"
+
+
+class TableResultDisplay:
+    """
+    Display wrapper for TableResult with rich Jupyter notebook rendering.
+
+    Provides HTML table display with automatic formatting, optional DataFrame
+    conversion, and support for ROI-indexed results.
+
+    Example::
+
+        # Display a TableResult from computation
+        result = proxy.compute_statistics()
+        display = TableResultDisplay(result)
+        display  # Shows styled HTML table in Jupyter
+
+        # Get as DataFrame for further analysis
+        df = display.to_dataframe()
+    """
+
+    # CSS styling for HTML tables
+    _TABLE_STYLE = """
+    <style>
+        .sigima-table {
+            border-collapse: collapse;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                         'Helvetica Neue', Arial, sans-serif;
+            font-size: 13px;
+            margin: 10px 0;
+        }
+        .sigima-table th {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .sigima-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: right;
+        }
+        .sigima-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .sigima-table tr:hover {
+            background-color: #e9ecef;
+        }
+        .sigima-table-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+    </style>
+    """
+
+    def __init__(
+        self,
+        result,
+        title: str | None = None,
+        visible_only: bool = True,
+        transpose_single_row: bool = True,
+    ) -> None:
+        """Initialize TableResult display.
+
+        Args:
+            result: TableResult object to display
+            title: Optional title override (uses result.title if None)
+            visible_only: If True, show only visible columns based on display prefs
+            transpose_single_row: If True, transpose single-row tables for readability
+        """
+        self._result = result
+        self._title = title
+        self._visible_only = visible_only
+        self._transpose_single_row = transpose_single_row
+
+    def _repr_html_(self) -> str:
+        """Return HTML representation for Jupyter display."""
+        try:
+            title = self._title or self._result.title
+
+            # Use TableResult's built-in to_html if available
+            if hasattr(self._result, "to_html"):
+                table_html = self._result.to_html(
+                    visible_only=self._visible_only,
+                    transpose_single_row=self._transpose_single_row,
+                )
+                return f"""
+                {self._TABLE_STYLE}
+                <div>
+                    <div class="sigima-table-title">{title}</div>
+                    {table_html}
+                </div>
+                """
+
+            # Fallback: manual HTML generation from DataFrame
+            df = self.to_dataframe()
+
+            # Transpose single-row tables for better readability
+            if self._transpose_single_row and len(df) == 1:
+                df = df.T
+                df.columns = ["Value"]
+
+            # Format numbers for display
+            html_table = df.to_html(
+                classes="sigima-table",
+                float_format=lambda x: f"{x:.6g}" if isinstance(x, float) else str(x),
+            )
+
+            return f"""
+            {self._TABLE_STYLE}
+            <div>
+                <div class="sigima-table-title">{title}</div>
+                {html_table}
+            </div>
+            """
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            return f"<div>Error rendering table: {e}</div>"
+
+    def to_dataframe(self):
+        """Convert the TableResult to a pandas DataFrame.
+
+        Returns:
+            pandas DataFrame with result data
+        """
+        if hasattr(self._result, "to_dataframe"):
+            return self._result.to_dataframe(visible_only=self._visible_only)
+
+        # Fallback: manual DataFrame creation
+        # pylint: disable=import-outside-toplevel
+        import pandas as pd
+
+        df = pd.DataFrame(self._result.data, columns=list(self._result.headers))
+        if self._result.roi_indices is not None:
+            df.insert(0, "roi_index", self._result.roi_indices)
+        return df
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        result_type = type(self._result).__name__
+        title = self._title or getattr(self._result, "title", "Untitled")
+        n_rows = len(self._result.data) if hasattr(self._result, "data") else "?"
+        n_cols = len(self._result.headers) if hasattr(self._result, "headers") else "?"
+        return f"TableResultDisplay({result_type}: {title}, {n_rows}×{n_cols})"
+
+
+class GeometryResultDisplay:
+    """
+    Display wrapper for GeometryResult with rich Jupyter notebook rendering.
+
+    Provides HTML table display showing coordinates and metadata for geometric
+    results like points, segments, circles, ellipses, rectangles, and polygons.
+
+    Example::
+
+        # Display a GeometryResult from computation
+        result = proxy.compute_peak_detection()
+        display = GeometryResultDisplay(result)
+        display  # Shows styled HTML table in Jupyter
+
+        # Get as DataFrame for further analysis
+        df = display.to_dataframe()
+    """
+
+    def __init__(
+        self,
+        result,
+        title: str | None = None,
+    ) -> None:
+        """Initialize GeometryResult display.
+
+        Args:
+            result: GeometryResult object to display
+            title: Optional title override (uses result.title if None)
+        """
+        self._result = result
+        self._title = title
+
+    def _repr_html_(self) -> str:
+        """Return HTML representation for Jupyter display."""
+        try:
+            title = self._title or self._result.title
+
+            # Use GeometryResult's built-in to_html if available
+            if hasattr(self._result, "to_html"):
+                table_html = self._result.to_html()
+                return f"""
+                {TableResultDisplay._TABLE_STYLE}
+                <div>
+                    <div class="sigima-table-title">{title}</div>
+                    {table_html}
+                </div>
+                """
+
+            # Fallback: manual HTML generation from DataFrame
+            df = self.to_dataframe()
+
+            # Format numbers for display
+            html_table = df.to_html(
+                classes="sigima-table",
+                float_format=lambda x: f"{x:.6g}" if isinstance(x, float) else str(x),
+            )
+
+            return f"""
+            {TableResultDisplay._TABLE_STYLE}
+            <div>
+                <div class="sigima-table-title">{title} ({self._result.kind.value})</div>
+                {html_table}
+            </div>
+            """
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            return f"<div>Error rendering geometry: {e}</div>"
+
+    def to_dataframe(self):
+        """Convert the GeometryResult to a pandas DataFrame.
+
+        Returns:
+            pandas DataFrame with coordinate data
+        """
+        if hasattr(self._result, "to_dataframe"):
+            return self._result.to_dataframe()
+
+        # Fallback: manual DataFrame creation based on kind
+        # pylint: disable=import-outside-toplevel
+        import pandas as pd
+        from sigima.objects import KindShape
+
+        coords = self._result.coords
+        kind = self._result.kind
+
+        # Create column names based on geometry kind
+        if kind == KindShape.POINT or kind == KindShape.MARKER:
+            columns = ["x", "y"]
+        elif kind == KindShape.SEGMENT:
+            columns = ["x0", "y0", "x1", "y1"]
+        elif kind == KindShape.RECTANGLE:
+            columns = ["x0", "y0", "width", "height"]
+        elif kind == KindShape.CIRCLE:
+            columns = ["xc", "yc", "radius"]
+        elif kind == KindShape.ELLIPSE:
+            columns = ["xc", "yc", "a", "b", "theta"]
+        elif kind == KindShape.POLYGON:
+            # Variable number of columns for polygons
+            n_coords = coords.shape[1]
+            columns = [
+                f"x{i // 2}" if i % 2 == 0 else f"y{i // 2}" for i in range(n_coords)
+            ]
+        else:
+            columns = [f"c{i}" for i in range(coords.shape[1])]
+
+        df = pd.DataFrame(coords, columns=columns)
+        if self._result.roi_indices is not None:
+            df.insert(0, "roi_index", self._result.roi_indices)
+        return df
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        title = self._title or getattr(self._result, "title", "Untitled")
+        kind = getattr(self._result, "kind", "?")
+        n_rows = len(self._result.coords) if hasattr(self._result, "coords") else "?"
+        return f"GeometryResultDisplay({kind}: {title}, {n_rows} items)"
