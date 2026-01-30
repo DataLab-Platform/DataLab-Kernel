@@ -38,6 +38,11 @@ COLORS = ["blue", "red", "green", "orange", "purple", "brown", "pink", "gray", "
 LINESTYLES = ["-", "--", "-.", ":"]
 MASK_OPACITY = 0.35  # Opacity for mask overlay
 
+# Metadata prefix for geometry results (consistent with DataLab's GeometryAdapter)
+GEOMETRY_META_PREFIX = "Geometry_"
+# Metadata prefix for table results (consistent with DataLab's TableAdapter)
+TABLE_META_PREFIX = "Table_"
+
 
 def _get_next_style(index: int) -> tuple[str, str]:
     """Get color and linestyle for the next plot item.
@@ -51,6 +56,135 @@ def _get_next_style(index: int) -> tuple[str, str]:
     color = COLORS[index % len(COLORS)]
     linestyle = LINESTYLES[(index // len(COLORS)) % len(LINESTYLES)]
     return color, linestyle
+
+
+def _extract_geometry_results_from_metadata(obj) -> list:
+    """Extract GeometryResult objects from object metadata.
+
+    DataLab stores geometry results in object metadata with keys starting with
+    'Geometry_'. This function extracts and reconstructs those GeometryResult
+    objects for visualization.
+
+    Args:
+        obj: SignalObj or ImageObj with potential geometry results in metadata
+
+    Returns:
+        List of GeometryResult objects extracted from metadata
+    """
+    results = []
+    if not hasattr(obj, "metadata") or obj.metadata is None:
+        return results
+
+    # Delayed import
+    # pylint: disable=import-outside-toplevel
+    from sigima.objects import GeometryResult
+
+    for key, value in obj.metadata.items():
+        if key.startswith(GEOMETRY_META_PREFIX) and isinstance(value, dict):
+            try:
+                geometry = GeometryResult.from_dict(value)
+                results.append(geometry)
+            except (ValueError, TypeError, KeyError):
+                # Skip invalid entries
+                pass
+
+    return results
+
+
+def _extract_table_results_from_metadata(obj) -> list:
+    """Extract TableResult objects from object metadata.
+
+    DataLab stores table results in object metadata with keys starting with
+    'Table_'. This function extracts and reconstructs those TableResult
+    objects for visualization.
+
+    Args:
+        obj: SignalObj or ImageObj with potential table results in metadata
+
+    Returns:
+        List of TableResult objects extracted from metadata
+    """
+    results = []
+    if not hasattr(obj, "metadata") or obj.metadata is None:
+        return results
+
+    # Delayed import
+    # pylint: disable=import-outside-toplevel
+    from sigima.objects import TableResult
+
+    for key, value in obj.metadata.items():
+        if key.startswith(TABLE_META_PREFIX) and isinstance(value, dict):
+            try:
+                table = TableResult.from_dict(value)
+                results.append(table)
+            except (ValueError, TypeError, KeyError):
+                # Skip invalid entries
+                pass
+
+    return results
+
+
+def _add_table_results_to_axes(ax: Axes, table_results: list) -> None:
+    """Add table results as text annotation to matplotlib axes.
+
+    Formats TableResult objects as a text box displayed in the upper-left
+    corner of the axes, similar to DataLab's result label display.
+
+    Args:
+        ax: Matplotlib axes object
+        table_results: List of TableResult objects to display
+    """
+    if not table_results:
+        return
+
+    # Build text content from all table results
+    text_lines = []
+    for table in table_results:
+        # Add table title as header
+        text_lines.append(f"{table.title}:")
+
+        # Get headers and data
+        headers = list(table.headers)
+        data = table.data
+
+        # Format each row (typically just one row for statistics)
+        for row in data:
+            for header, value in zip(headers, row):
+                # Format numeric values
+                if isinstance(value, float):
+                    if abs(value) < 0.001 or abs(value) >= 10000:
+                        formatted = f"{value:.3g}"
+                    else:
+                        formatted = f"{value:.3f}"
+                else:
+                    formatted = str(value)
+                text_lines.append(f"  {header}: {formatted}")
+
+        text_lines.append("")  # Empty line between tables
+
+    # Remove trailing empty line
+    if text_lines and text_lines[-1] == "":
+        text_lines.pop()
+
+    text = "\n".join(text_lines)
+
+    # Add text box annotation in upper-left corner
+    ax.text(
+        0.02,
+        0.98,
+        text,
+        transform=ax.transAxes,
+        fontsize=9,
+        verticalalignment="top",
+        horizontalalignment="left",
+        fontfamily="monospace",
+        bbox={
+            "boxstyle": "round,pad=0.5",
+            "facecolor": "white",
+            "edgecolor": "gray",
+            "alpha": 0.85,
+        },
+    )
 
 
 def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
@@ -541,6 +675,15 @@ class PlotResult:
             for roi in obj.roi:
                 _add_single_roi_to_axes(ax, roi, obj)
 
+        # Auto-extract and display geometry results from object metadata
+        metadata_results = _extract_geometry_results_from_metadata(obj)
+        for result in metadata_results:
+            _add_geometry_to_axes(ax, result)
+
+        # Auto-extract and display table results (statistics) from metadata
+        table_results = _extract_table_results_from_metadata(obj)
+        _add_table_results_to_axes(ax, table_results)
+
     def _render_image(self, ax: Axes, fig) -> None:
         """Render image data to axes.
 
@@ -592,15 +735,26 @@ class PlotResult:
             for roi in obj.roi:
                 _add_single_roi_to_axes(ax, roi, obj)
 
-        # Overlay geometry results
+        # Overlay geometry results from explicit parameter or from metadata
+        results_to_display = []
         if self._results is not None:
             result_list = (
                 self._results
                 if isinstance(self._results, (list, tuple))
                 else [self._results]
             )
-            for result in result_list:
-                _add_geometry_to_axes(ax, result)
+            results_to_display.extend(result_list)
+
+        # Auto-extract geometry results from object metadata
+        metadata_results = _extract_geometry_results_from_metadata(obj)
+        results_to_display.extend(metadata_results)
+
+        for result in results_to_display:
+            _add_geometry_to_axes(ax, result)
+
+        # Auto-extract and display table results (statistics) from metadata
+        table_results = _extract_table_results_from_metadata(obj)
+        _add_table_results_to_axes(ax, table_results)
 
     def __repr__(self) -> str:
         """Return string representation."""
@@ -719,6 +873,15 @@ class MultiSignalPlotResult:
                             if roi_idx == 0
                             else None,
                         )
+
+                # Auto-extract and display geometry results from object metadata
+                metadata_results = _extract_geometry_results_from_metadata(obj)
+                for result in metadata_results:
+                    _add_geometry_to_axes(ax, result)
+
+                # Auto-extract and display table results (statistics) from metadata
+                table_results = _extract_table_results_from_metadata(obj)
+                _add_table_results_to_axes(ax, table_results)
 
             elif isinstance(data_or_obj, tuple) and len(data_or_obj) == 2:
                 # Tuple of (x, y) arrays
@@ -963,13 +1126,26 @@ class MultiImagePlotResult:
                 for roi in img.roi:
                     _add_single_roi_to_axes(ax, roi, img)
 
-            # Overlay geometry results
+            # Collect geometry results: explicit + from metadata
+            results_to_display = []
             if result is not None:
                 result_list_item = (
                     result if isinstance(result, (list, tuple)) else [result]
                 )
-                for res in result_list_item:
-                    _add_geometry_to_axes(ax, res)
+                results_to_display.extend(result_list_item)
+
+            # Auto-extract geometry results from object metadata
+            if is_image_obj:
+                metadata_results = _extract_geometry_results_from_metadata(img)
+                results_to_display.extend(metadata_results)
+
+            for res in results_to_display:
+                _add_geometry_to_axes(ax, res)
+
+            # Auto-extract and display table results (statistics) from metadata
+            if is_image_obj:
+                table_results = _extract_table_results_from_metadata(img)
+                _add_table_results_to_axes(ax, table_results)
 
         # Hide unused subplots
         for idx in range(n_images, len(axes_flat)):
