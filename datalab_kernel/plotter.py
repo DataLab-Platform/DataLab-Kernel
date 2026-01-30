@@ -124,21 +124,26 @@ def _extract_table_results_from_metadata(obj) -> list:
     return results
 
 
-def _add_table_results_to_axes(ax: Axes, table_results: list) -> None:
-    """Add table results as text annotation to matplotlib axes.
+def _add_table_results_to_axes(
+    ax: Axes, table_results: list, geometry_results: list | None = None
+) -> None:
+    """Add table and geometry results as text annotation to matplotlib axes.
 
-    Formats TableResult objects as a text box displayed in the upper-left
-    corner of the axes, similar to DataLab's result label display.
+    Formats TableResult and GeometryResult objects as a text box displayed in
+    the upper-left corner of the axes, similar to DataLab's result label display.
 
     Args:
         ax: Matplotlib axes object
         table_results: List of TableResult objects to display
+        geometry_results: Optional list of GeometryResult objects to display
     """
-    if not table_results:
+    if not table_results and not geometry_results:
         return
 
-    # Build text content from all table results
+    # Build text content from all results
     text_lines = []
+
+    # Add table results first (statistics)
     for table in table_results:
         # Add table title as header
         text_lines.append(f"{table.title}:")
@@ -160,7 +165,33 @@ def _add_table_results_to_axes(ax: Axes, table_results: list) -> None:
                     formatted = str(value)
                 text_lines.append(f"  {header}: {formatted}")
 
-        text_lines.append("")  # Empty line between tables
+        text_lines.append("")  # Empty line between results
+
+    # Add geometry results after table results
+    if geometry_results:
+        for geometry in geometry_results:
+            text_lines.append(f"{geometry.title}:")
+            text_lines.append("  Value")
+
+            # Get coordinate labels based on geometry kind
+            coord_labels = _get_geometry_coord_labels(geometry)
+
+            # Display first row of coords (most geometry results have one row)
+            if len(geometry.coords) > 0:
+                coords = (
+                    geometry.coords[0] if geometry.coords.ndim > 1 else geometry.coords
+                )
+                for label, value in zip(coord_labels, coords):
+                    if isinstance(value, float):
+                        if abs(value) < 0.001 or abs(value) >= 10000:
+                            formatted = f"{value:.3g}"
+                        else:
+                            formatted = f"{value:.3f}"
+                    else:
+                        formatted = str(value)
+                    text_lines.append(f"  {label}: {formatted}")
+
+            text_lines.append("")  # Empty line between results
 
     # Remove trailing empty line
     if text_lines and text_lines[-1] == "":
@@ -185,6 +216,42 @@ def _add_table_results_to_axes(ax: Axes, table_results: list) -> None:
             "alpha": 0.85,
         },
     )
+
+
+def _get_geometry_coord_labels(geometry) -> list[str]:
+    """Get coordinate labels for a geometry result based on its kind.
+
+    Args:
+        geometry: GeometryResult object
+
+    Returns:
+        List of coordinate labels (e.g., ["x", "y", "r"] for circle)
+    """
+    # Delayed import
+    # pylint: disable=import-outside-toplevel
+    from sigima.objects import KindShape
+
+    if geometry.kind == KindShape.POINT:
+        return ["x", "y"]
+    if geometry.kind == KindShape.MARKER:
+        return ["x", "y"]
+    if geometry.kind == KindShape.RECTANGLE:
+        return ["x0", "y0", "dx", "dy"]
+    if geometry.kind == KindShape.CIRCLE:
+        return ["x", "y", "r"]
+    if geometry.kind == KindShape.SEGMENT:
+        return ["x0", "y0", "x1", "y1"]
+    if geometry.kind == KindShape.ELLIPSE:
+        return ["x", "y", "a", "b", "θ"]
+    # Default for POLYGON and others
+    return [
+        f"c{i}"
+        for i in range(
+            len(geometry.coords[0])
+            if geometry.coords.ndim > 1
+            else len(geometry.coords)
+        )
+    ]
 
 
 def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
@@ -682,7 +749,7 @@ class PlotResult:
 
         # Auto-extract and display table results (statistics) from metadata
         table_results = _extract_table_results_from_metadata(obj)
-        _add_table_results_to_axes(ax, table_results)
+        _add_table_results_to_axes(ax, table_results, metadata_results)
 
     def _render_image(self, ax: Axes, fig) -> None:
         """Render image data to axes.
@@ -754,7 +821,7 @@ class PlotResult:
 
         # Auto-extract and display table results (statistics) from metadata
         table_results = _extract_table_results_from_metadata(obj)
-        _add_table_results_to_axes(ax, table_results)
+        _add_table_results_to_axes(ax, table_results, results_to_display)
 
     def __repr__(self) -> str:
         """Return string representation."""
@@ -881,7 +948,7 @@ class MultiSignalPlotResult:
 
                 # Auto-extract and display table results (statistics) from metadata
                 table_results = _extract_table_results_from_metadata(obj)
-                _add_table_results_to_axes(ax, table_results)
+                _add_table_results_to_axes(ax, table_results, metadata_results)
 
             elif isinstance(data_or_obj, tuple) and len(data_or_obj) == 2:
                 # Tuple of (x, y) arrays
@@ -1145,7 +1212,7 @@ class MultiImagePlotResult:
             # Auto-extract and display table results (statistics) from metadata
             if is_image_obj:
                 table_results = _extract_table_results_from_metadata(img)
-                _add_table_results_to_axes(ax, table_results)
+                _add_table_results_to_axes(ax, table_results, results_to_display)
 
         # Hide unused subplots
         for idx in range(n_images, len(axes_flat)):
