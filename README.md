@@ -5,15 +5,20 @@
 [![PyPI status](https://img.shields.io/pypi/status/datalab-kernel.svg)](https://github.com/DataLab-Platform/DataLab-Kernel)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/datalab-kernel.svg)](https://pypi.org/project/datalab-kernel/)
 
-**A standalone Jupyter kernel providing seamless, reproducible access to DataLab workspaces, with optional live synchronization to the DataLab GUI.**
+**A standalone [Xeus-Python](https://github.com/jupyter-xeus/xeus-python)-based Jupyter kernel providing seamless, reproducible access to DataLab workspaces, with optional live synchronization to the DataLab GUI.**
 
 ---
 
 ## Overview
 
-**DataLab-Kernel** is a custom Jupyter kernel designed to bridge **DataLab** and the **Jupyter** ecosystem.
+**DataLab-Kernel** is a custom Jupyter kernel designed to bridge **DataLab** and the **Jupyter** ecosystem. It is built on top of [**Xeus-Python**](https://github.com/jupyter-xeus/xeus-python), a lightweight and efficient Python kernel for Jupyter that offers improved performance, native debugger support, and excellent Qt event loop integration.
 
-It enables scientists and engineers to:
+Thanks to Xeus-Python's architecture, DataLab-Kernel runs seamlessly in both:
+
+- **Native Jupyter environments** (JupyterLab, Jupyter Notebook, VS Code)
+- **[JupyterLite](https://jupyterlite.readthedocs.io/)** (browser-based Jupyter, no server required)
+
+This enables scientists and engineers to:
 
 - run reproducible analyses in Jupyter notebooks,
 - interact transparently with DataLab’s internal workspace when DataLab is running,

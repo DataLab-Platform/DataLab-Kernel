@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datalab-kernel"
-description = "A standalone Jupyter kernel for DataLab with optional live synchronization"
+description = "A standalone Xeus-Python-based Jupyter kernel for DataLab with optional live synchronization"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
 authors = [
