@@ -131,11 +131,14 @@ def generate_install_snippet(wheels_dir: Path, port: int) -> str:
         return "# No wheels found"
 
     lines = [
-        "# Copy this code into a JupyterLite notebook cell:",
+        "# === RUN THIS CELL FIRST AFTER EVERY KERNEL RESTART ===",
+        "# JupyterLite resets to the original environment on restart,",
+        "# so you must re-install dev wheels each time.",
+        "",
         "import micropip",
         "",
         "# Install dev wheels "
-        "(deps=False skips xeus-python which doesn't work in Pyodide)",
+        "(deps=False skips xeus-python which can't run in Pyodide)",
         "await micropip.install([",
     ]
 
@@ -144,13 +147,9 @@ def generate_install_snippet(wheels_dir: Path, port: int) -> str:
 
     lines.append("], deps=False)")
     lines.append("")
-    lines.append(
-        "# Note: sigima dependencies (numpy, scipy, etc.) "
-        "are already available in JupyterLite"
-    )
-    lines.append("# Then import normally:")
-    lines.append("# from sigima import SignalObj, ImageObj")
-    lines.append("# from datalab_kernel import Workspace, Plotter")
+    lines.append("print('Dev wheels installed! You can now import:')")
+    lines.append("print('  from sigima import SignalObj, ImageObj')")
+    lines.append("print('  from datalab_kernel import Workspace, Plotter')")
 
     return "\n".join(lines)
 
