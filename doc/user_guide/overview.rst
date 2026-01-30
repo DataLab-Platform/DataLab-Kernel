@@ -80,12 +80,17 @@ This mode is ideal for:
 Live Mode
 ^^^^^^^^^
 
-When DataLab is running, the kernel connects via XML-RPC:
+When DataLab is running, the kernel connects via Web API or XML-RPC:
 
 - Objects synchronized with DataLab panels
 - Access to DataLab's full processing pipeline via ``calc()``
 - Direct proxy access for advanced operations
 - Changes visible in real-time in DataLab GUI
+
+Two connection methods are supported:
+
+- **Web API** (recommended): HTTP/JSON connection, WASM/Pyodide compatible
+- **XML-RPC** (legacy): Automatic connection when DataLab has remote control enabled
 
 This mode enables:
 

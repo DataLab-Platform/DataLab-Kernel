@@ -68,9 +68,17 @@ notebook-based workflows for signal and image analysis with
 Key Features
 ------------
 
+**Xeus-Python Foundation**
+    Built on `Xeus-Python <https://github.com/jupyter-xeus/xeus-python>`_ for
+    improved performance, native debugger support, and excellent Qt event loop integration.
+
 **Dual Operating Modes**
     - **Standalone mode**: Work independently with HDF5 persistence
-    - **Live mode**: Synchronize with running DataLab instance via XML-RPC
+    - **Live mode**: Synchronize with running DataLab via Web API (recommended) or XML-RPC
+
+**Cross-Platform Jupyter Support**
+    Works in native Jupyter (JupyterLab, Notebook, VS Code) and
+    `JupyterLite <https://jupyterlite.readthedocs.io/>`_ (browser-based, no server required).
 
 **Unified API**
     Same code works in both modes - switch seamlessly between local notebooks

@@ -186,17 +186,29 @@ Jupyter Integration
 
 Works seamlessly with:
 
+**Native Jupyter environments:**
+
 - **Jupyter Notebook**: Classic notebook interface
 - **JupyterLab**: Modern lab environment
 - **VS Code**: With Jupyter extension
 
-Register the kernel once:
+**Browser-based:**
+
+- **JupyterLite**: No server required, runs entirely in the browser via WebAssembly
+
+For native environments, register the kernel once:
 
 .. code-block:: console
 
     $ datalab-kernel-install
 
 Then select "DataLab" kernel in any Jupyter frontend.
+
+For JupyterLite, load the extension in your notebook:
+
+.. code-block:: python
+
+    %load_ext datalab_kernel
 
 
 Error Handling
