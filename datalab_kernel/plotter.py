@@ -498,6 +498,7 @@ class Plotter:
         obj_or_name: DataObject | str,
         title: str | None = None,
         show_roi: bool = True,
+        show_results: bool = True,
         **kwargs,
     ) -> PlotResult:
         """Plot an object or retrieve and plot by name.
@@ -506,6 +507,7 @@ class Plotter:
             obj_or_name: Object to plot, or name of object in workspace
             title: Optional plot title override
             show_roi: Whether to show ROIs defined in the object
+            show_results: Whether to show geometry/table results from metadata
             **kwargs: Additional plotting options
 
         Returns:
@@ -523,7 +525,9 @@ class Plotter:
             if title is None and hasattr(obj, "title"):
                 title = obj.title
 
-        return PlotResult(obj, title=title, show_roi=show_roi, **kwargs)
+        return PlotResult(
+            obj, title=title, show_roi=show_roi, show_results=show_results, **kwargs
+        )
 
     def plot_signals(
         self,
@@ -534,6 +538,7 @@ class Plotter:
         xunit: str | None = None,
         yunit: str | None = None,
         show_roi: bool = True,
+        show_results: bool = True,
         **kwargs,
     ) -> MultiSignalPlotResult:
         """Plot multiple signals on a single plot.
@@ -547,6 +552,7 @@ class Plotter:
             xunit: Unit for the x-axis
             yunit: Unit for the y-axis
             show_roi: Whether to show ROIs defined in SignalObj instances
+            show_results: Whether to show geometry/table results from metadata
             **kwargs: Additional plotting options
 
         Returns:
@@ -567,6 +573,7 @@ class Plotter:
             xunit=xunit,
             yunit=yunit,
             show_roi=show_roi,
+            show_results=show_results,
             **kwargs,
         )
 
@@ -582,6 +589,7 @@ class Plotter:
         yunit: str | None = None,
         zunit: str | None = None,
         show_roi: bool = True,
+        show_results: bool = True,
         results: list | None = None,
         **kwargs,
     ) -> MultiImagePlotResult:
@@ -599,6 +607,7 @@ class Plotter:
             yunit: Unit for the y-axis
             zunit: Unit for the colorbar
             show_roi: Whether to show ROIs defined in ImageObj instances
+            show_results: Whether to show geometry/table results from metadata
             results: Optional list of GeometryResult objects to overlay
             **kwargs: Additional plotting options (e.g., colormap)
 
@@ -623,6 +632,7 @@ class Plotter:
             yunit=yunit,
             zunit=zunit,
             show_roi=show_roi,
+            show_results=show_results,
             results=results,
             **kwargs,
         )
@@ -681,6 +691,7 @@ class PlotResult:
         obj: DataObject,
         title: str | None = None,
         show_roi: bool = True,
+        show_results: bool = True,
         results: list | None = None,
         **kwargs,
     ) -> None:
@@ -690,12 +701,14 @@ class PlotResult:
             obj: Object to display
             title: Plot title
             show_roi: Whether to show ROIs
+            show_results: Whether to show geometry/table results from metadata
             results: Optional list of GeometryResult objects to overlay (for images)
             **kwargs: Additional options
         """
         self._obj = obj
         self._title = title
         self._show_roi = show_roi
+        self._show_results = show_results
         self._results = results
         self._kwargs = kwargs
 
@@ -802,14 +815,14 @@ class PlotResult:
             for roi in obj.roi:
                 _add_single_roi_to_axes(ax, roi, obj)
 
-        # Auto-extract and display geometry results from object metadata
-        metadata_results = _extract_geometry_results_from_metadata(obj)
-        for result in metadata_results:
-            _add_geometry_to_axes(ax, result)
+        # Auto-extract and display geometry/table results from object metadata
+        if self._show_results:
+            metadata_results = _extract_geometry_results_from_metadata(obj)
+            for result in metadata_results:
+                _add_geometry_to_axes(ax, result)
 
-        # Auto-extract and display table results (statistics) from metadata
-        table_results = _extract_table_results_from_metadata(obj)
-        _add_table_results_to_axes(ax, table_results, metadata_results)
+            table_results = _extract_table_results_from_metadata(obj)
+            _add_table_results_to_axes(ax, table_results, metadata_results)
 
     def _render_image(self, ax: Axes, fig) -> None:
         """Render image data to axes.
@@ -868,26 +881,27 @@ class PlotResult:
             for roi in obj.roi:
                 _add_single_roi_to_axes(ax, roi, obj)
 
-        # Overlay geometry results from explicit parameter or from metadata
-        results_to_display = []
-        if self._results is not None:
-            result_list = (
-                self._results
-                if isinstance(self._results, (list, tuple))
-                else [self._results]
-            )
-            results_to_display.extend(result_list)
+        # Overlay geometry/table results (explicit or from metadata)
+        if self._show_results:
+            results_to_display = []
+            if self._results is not None:
+                result_list = (
+                    self._results
+                    if isinstance(self._results, (list, tuple))
+                    else [self._results]
+                )
+                results_to_display.extend(result_list)
 
-        # Auto-extract geometry results from object metadata
-        metadata_results = _extract_geometry_results_from_metadata(obj)
-        results_to_display.extend(metadata_results)
+            # Auto-extract geometry results from object metadata
+            metadata_results = _extract_geometry_results_from_metadata(obj)
+            results_to_display.extend(metadata_results)
 
-        for result in results_to_display:
-            _add_geometry_to_axes(ax, result)
+            for result in results_to_display:
+                _add_geometry_to_axes(ax, result)
 
-        # Auto-extract and display table results (statistics) from metadata
-        table_results = _extract_table_results_from_metadata(obj)
-        _add_table_results_to_axes(ax, table_results, results_to_display)
+            # Auto-extract and display table results (statistics) from metadata
+            table_results = _extract_table_results_from_metadata(obj)
+            _add_table_results_to_axes(ax, table_results, results_to_display)
 
     def __repr__(self) -> str:
         """Return string representation."""
@@ -913,6 +927,7 @@ class MultiSignalPlotResult:
         xunit: str | None = None,
         yunit: str | None = None,
         show_roi: bool = True,
+        show_results: bool = True,
         **kwargs,
     ) -> None:
         """Initialize multi-signal plot result.
@@ -925,6 +940,7 @@ class MultiSignalPlotResult:
             xunit: Unit for the x-axis
             yunit: Unit for the y-axis
             show_roi: Whether to show ROIs
+            show_results: Whether to show geometry/table results from metadata
             **kwargs: Additional options
         """
         self._objs = objs
@@ -934,6 +950,7 @@ class MultiSignalPlotResult:
         self._xunit = xunit
         self._yunit = yunit
         self._show_roi = show_roi
+        self._show_results = show_results
         self._kwargs = kwargs
 
     def _repr_html_(self) -> str:
@@ -1007,14 +1024,14 @@ class MultiSignalPlotResult:
                             else None,
                         )
 
-                # Auto-extract and display geometry results from object metadata
-                metadata_results = _extract_geometry_results_from_metadata(obj)
-                for result in metadata_results:
-                    _add_geometry_to_axes(ax, result)
+                # Auto-extract and display geometry/table results from metadata
+                if self._show_results:
+                    metadata_results = _extract_geometry_results_from_metadata(obj)
+                    for result in metadata_results:
+                        _add_geometry_to_axes(ax, result)
 
-                # Auto-extract and display table results (statistics) from metadata
-                table_results = _extract_table_results_from_metadata(obj)
-                _add_table_results_to_axes(ax, table_results, metadata_results)
+                    table_results = _extract_table_results_from_metadata(obj)
+                    _add_table_results_to_axes(ax, table_results, metadata_results)
 
             elif isinstance(data_or_obj, tuple) and len(data_or_obj) == 2:
                 # Tuple of (x, y) arrays
@@ -1083,6 +1100,7 @@ class MultiImagePlotResult:
         yunit: str | None = None,
         zunit: str | None = None,
         show_roi: bool = True,
+        show_results: bool = True,
         results: list | None = None,
         rows: int | None = None,
         share_axes: bool = True,
@@ -1101,6 +1119,7 @@ class MultiImagePlotResult:
             yunit: Unit for the y-axis
             zunit: Unit for the colorbar
             show_roi: Whether to show ROIs
+            show_results: Whether to show geometry/table results from metadata
             results: Optional list of GeometryResult objects to overlay
             rows: Fixed number of rows in the grid, or None to compute automatically
             share_axes: Whether to share axes across plots
@@ -1116,6 +1135,7 @@ class MultiImagePlotResult:
         self._yunit = yunit
         self._zunit = zunit
         self._show_roi = show_roi
+        self._show_results = show_results
         self._results = results
         self._rows = rows
         self._share_axes = share_axes
@@ -1273,26 +1293,27 @@ class MultiImagePlotResult:
                 for roi in img.roi:
                     _add_single_roi_to_axes(ax, roi, img)
 
-            # Collect geometry results: explicit + from metadata
-            results_to_display = []
-            if result is not None:
-                result_list_item = (
-                    result if isinstance(result, (list, tuple)) else [result]
-                )
-                results_to_display.extend(result_list_item)
+            # Collect and display geometry/table results if enabled
+            if self._show_results:
+                results_to_display = []
+                if result is not None:
+                    result_list_item = (
+                        result if isinstance(result, (list, tuple)) else [result]
+                    )
+                    results_to_display.extend(result_list_item)
 
-            # Auto-extract geometry results from object metadata
-            if is_image_obj:
-                metadata_results = _extract_geometry_results_from_metadata(img)
-                results_to_display.extend(metadata_results)
+                # Auto-extract geometry results from object metadata
+                if is_image_obj:
+                    metadata_results = _extract_geometry_results_from_metadata(img)
+                    results_to_display.extend(metadata_results)
 
-            for res in results_to_display:
-                _add_geometry_to_axes(ax, res)
+                for res in results_to_display:
+                    _add_geometry_to_axes(ax, res)
 
-            # Auto-extract and display table results (statistics) from metadata
-            if is_image_obj:
-                table_results = _extract_table_results_from_metadata(img)
-                _add_table_results_to_axes(ax, table_results, results_to_display)
+                # Auto-extract and display table results (statistics) from metadata
+                if is_image_obj:
+                    table_results = _extract_table_results_from_metadata(img)
+                    _add_table_results_to_axes(ax, table_results, results_to_display)
 
         # Hide unused subplots
         for idx in range(n_images, len(axes_flat)):
