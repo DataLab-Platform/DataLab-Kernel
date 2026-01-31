@@ -11,6 +11,10 @@ Prerequisites
 1. Install DataLab: ``pip install datalab-platform``
 2. Start DataLab before running this example
 
+.. warning::
+
+    Live mode requires the Web API feature in DataLab, available in version 1.1 and later.
+
 Connecting to DataLab
 ---------------------
 

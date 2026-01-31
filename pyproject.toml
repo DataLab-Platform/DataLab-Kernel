@@ -53,7 +53,7 @@ doc = [
     "sphinx-copybutton>=0.5",
 ]
 datalab = [
-    "datalab-platform>=1.0",
+    "datalab-platform>=1.1",
 ]
 
 [project.urls]
