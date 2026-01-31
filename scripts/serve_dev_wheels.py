@@ -5,7 +5,7 @@
 Development Wheel Server for JupyterLite Testing
 =================================================
 
-This script builds development wheels for Sigima and DataLab-Kernel,
+This script builds development wheels for guidata, Sigima and DataLab-Kernel,
 then serves them via HTTP for installation in JupyterLite.
 
 Usage:
@@ -37,6 +37,7 @@ import sys
 from pathlib import Path
 
 # Default paths - adjust if your workspace layout differs
+DEFAULT_GUIDATA_PATH = Path("C:/Dev/guidata")
 DEFAULT_SIGIMA_PATH = Path("C:/Dev/Sigima")
 DEFAULT_KERNEL_PATH = Path("C:/Dev/DataLab-Kernel")
 DEFAULT_WHEELS_DIR = Path("C:/Dev/wheels")
@@ -211,6 +212,12 @@ def main():
         help=f"HTTP server port (default: {DEFAULT_PORT})",
     )
     parser.add_argument(
+        "--guidata-path",
+        type=Path,
+        default=DEFAULT_GUIDATA_PATH,
+        help=f"Path to guidata project (default: {DEFAULT_GUIDATA_PATH})",
+    )
+    parser.add_argument(
         "--sigima-path",
         type=Path,
         default=DEFAULT_SIGIMA_PATH,
@@ -239,6 +246,11 @@ def main():
         help="Serve existing wheels only, don't rebuild",
     )
     parser.add_argument(
+        "--skip-guidata",
+        action="store_true",
+        help="Skip building guidata wheel",
+    )
+    parser.add_argument(
         "--skip-sigima",
         action="store_true",
         help="Skip building Sigima wheel",
@@ -261,6 +273,11 @@ def main():
             return 1
 
         built_wheels = []
+
+        if not args.skip_guidata:
+            wheel = build_wheel(args.guidata_path, args.wheels_dir)
+            if wheel:
+                built_wheels.append(wheel)
 
         if not args.skip_sigima:
             wheel = build_wheel(args.sigima_path, args.wheels_dir)
