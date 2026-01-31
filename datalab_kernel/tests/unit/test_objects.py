@@ -82,7 +82,9 @@ class TestSignalObj:
 
         repr_str = repr(signal)
 
-        assert "SignalObj" in repr_str
+        # New repr format shows structured text with title and fields
+        assert "test:" in repr_str
+        assert "xydata:" in repr_str
 
 
 class TestImageObj:
@@ -143,7 +145,9 @@ class TestImageObj:
 
         repr_str = repr(image)
 
-        assert "ImageObj" in repr_str
+        # New repr format shows structured text with title and fields
+        assert "test:" in repr_str
+        assert "data:" in repr_str
 
 
 class TestCreateFunctions:
