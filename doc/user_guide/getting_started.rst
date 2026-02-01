@@ -129,15 +129,10 @@ Or call ``connect()`` explicitly:
 
     workspace.connect(url="http://192.168.1.100:18080", token="your-token")
 
-**XML-RPC** (legacy)
-
-If no Web API URL is set but DataLab is running with remote control enabled,
-the workspace will connect via XML-RPC automatically.
-
 .. note::
 
-    Web API is the recommended connection method as it supports WASM/Pyodide
-    environments and provides more efficient binary data transfer via NPZ format.
+    The Web API supports WASM/Pyodide environments and provides efficient
+    binary data transfer via NPZ format.
 
 
 Switching to Live Mode

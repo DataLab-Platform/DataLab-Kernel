@@ -62,11 +62,6 @@ For manual connection (e.g., remote DataLab):
 
     workspace.connect(url="http://192.168.1.100:18080", token="your-token")
 
-**XML-RPC** (legacy)
-
-Automatic connection when DataLab is running with remote control enabled.
-No configuration required.
-
 **Environment Variables**
 
 .. list-table::

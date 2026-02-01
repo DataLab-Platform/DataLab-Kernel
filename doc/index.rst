@@ -74,7 +74,7 @@ Key Features
 
 **Dual Operating Modes**
     - **Standalone mode**: Work independently with HDF5 persistence
-    - **Live mode**: Synchronize with running DataLab via Web API (recommended) or XML-RPC
+    - **Live mode**: Synchronize with running DataLab via Web API
 
 **Cross-Platform Jupyter Support**
     Works in native Jupyter (JupyterLab, Notebook, VS Code) and

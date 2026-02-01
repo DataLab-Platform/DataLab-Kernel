@@ -98,11 +98,8 @@ Depending on the execution context:
 - The kernel detects DataLab at runtime.
 - Workspace operations and visualizations are synchronized with the GUI.
 
-Two connection methods are supported:
-
-- **Auto-discovery** (recommended): DataLab-Kernel automatically finds running DataLab instances
-  via a connection file written by DataLab, or by probing the well-known port (18080)
-- **XML-RPC** (legacy): Automatic connection when DataLab is running with remote control enabled
+Connection is automatic via **auto-discovery**: DataLab-Kernel finds running DataLab instances
+via a connection file written by DataLab, or by probing the well-known port (18080).
 
 **No environment variables or manual configuration needed** — just start DataLab with
 the Web API enabled and load the kernel extension.

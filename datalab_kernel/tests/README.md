@@ -27,7 +27,7 @@ pytest
 
 **Result:**
 
-```
+```text
 ======================================================================
 🚀 Starting DataLab for live tests...
 ======================================================================
@@ -58,7 +58,7 @@ Skips all live tests, testing only standalone backend:
 
 **Result:**
 
-```
+```text
 98 passed, 24 skipped in 2.13s  # Standalone backend fully tested
 ```
 
@@ -82,7 +82,7 @@ Runs only live tests, skipping standalone-only tests:
 
 **Result:**
 
-```
+```text
 119 passed, 3 skipped  # Live backend fully tested
 ```
 
@@ -133,7 +133,7 @@ Tests will detect the running DataLab and use it instead of starting a new insta
 
 ## Test Execution Flow (Default Mode)
 
-```
+```text
 pytest
   │
   ├─► Phase 1: Standalone Tests (98 tests, ~2s)
@@ -152,7 +152,7 @@ pytest
 
 ## Architecture
 
-```
+```text
 tests/
 ├── conftest.py          # pytest configuration, smart test orchestration
 │                        # - Reorders tests (standalone first, live second)
@@ -165,7 +165,7 @@ tests/
 └── unit/                # Unit tests for kernel components
 ```
 
-The separation between test infrastructure (which may use XML-RPC) and kernel workspace (which uses only Web API) is intentional and maintains clean architectural boundaries.
+The separation between test infrastructure and kernel workspace is intentional and maintains clean architectural boundaries.
 
 ## Continuous Integration Recommendations
 

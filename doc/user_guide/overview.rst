@@ -51,8 +51,8 @@ The kernel follows a clean architectural pattern with three main components:
     ┌─────────────────────┐       ┌─────────────────────┐
     │  StandaloneBackend  │       │    LiveBackend      │
     │                     │       │                     │
-    │  • Local storage    │       │  • RemoteProxy      │
-    │  • HDF5 files       │       │  • XML-RPC to DL    │
+    │  • Local storage    │       │  • Web API          │
+    │  • HDF5 files       │       │  • HTTP/JSON        │
     │  • No DataLab req.  │       │  • Full DL access   │
     └─────────────────────┘       └─────────────────────┘
 
@@ -80,17 +80,19 @@ This mode is ideal for:
 Live Mode
 ^^^^^^^^^
 
-When DataLab is running, the kernel connects via Web API or XML-RPC:
+When DataLab is running, the kernel connects via Web API:
 
 - Objects synchronized with DataLab panels
 - Access to DataLab's full processing pipeline via ``calc()``
 - Direct proxy access for advanced operations
 - Changes visible in real-time in DataLab GUI
 
-Two connection methods are supported:
+The Web API provides:
 
-- **Web API** (recommended): HTTP/JSON connection, WASM/Pyodide compatible
-- **XML-RPC** (legacy): Automatic connection when DataLab has remote control enabled
+- HTTP/JSON connection
+- WASM/Pyodide compatible
+- Efficient NPZ binary format for data transfer
+- Bearer token authentication
 
 This mode enables:
 
