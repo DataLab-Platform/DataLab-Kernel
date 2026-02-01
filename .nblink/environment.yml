@@ -1,0 +1,8 @@
+name: datalab-environment
+channels:
+  - emscripten-forge
+  - conda-forge
+dependencies:
+  - xeus-python
+  - datalab-kernel
+  - micropip
