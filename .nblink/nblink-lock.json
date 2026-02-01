@@ -647,6 +647,18 @@
             "channel": "emscripten-forge",
             "version": "1.3.3"
         },
+        "datalab-kernel-0.2.8-pyhd8ed1ab_0.conda": {
+            "hash": {
+                "md5": "68f66b285ea73965bbe1221d715f55fa",
+                "sha256": "b252ab6aba380cd0e284e278910db2dec4d7e604496d2bcb5bec51fd0abcc0a5"
+            },
+            "name": "datalab-kernel",
+            "size": 59823,
+            "build": "pyhd8ed1ab_0",
+            "subdir": "noarch",
+            "channel": "conda-forge",
+            "version": "0.2.8"
+        },
         "exceptiongroup-1.3.1-pyhd8ed1ab_0.conda": {
             "hash": {
                 "md5": "8e662bd460bda79b1ea39194e3c4c9ab",
