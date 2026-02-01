@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -32,6 +33,8 @@ from pathlib import Path
 # Default port used by DataLab Web API
 DEFAULT_WEBAPI_PORT = 18080
 DEFAULT_WEBAPI_URL = f"http://127.0.0.1:{DEFAULT_WEBAPI_PORT}"
+
+logger = logging.getLogger("datalab-kernel")
 
 
 def is_pyodide() -> bool:
@@ -184,19 +187,30 @@ def _probe_wellknown_port(timeout: float = 2.0) -> tuple[str | None, str | None]
         Tuple of (url, None) if server found, or (None, None) if not.
     """
     url = DEFAULT_WEBAPI_URL
+    logger.debug(f"Probing well-known port: {url}")
 
     if is_pyodide():
-        # Use pyfetch in browser
+        # Use XMLHttpRequest synchronously in browser
+        # pyfetch is async and can't be used in synchronous context
         try:
             # pylint: disable=import-outside-toplevel
-            from pyodide.http import pyfetch  # type: ignore[import-not-found]
+            from js import XMLHttpRequest  # type: ignore[import-not-found]
 
-            # Synchronous request in Pyodide
-            response = pyfetch(f"{url}/api/v1/status", method="GET").result()
-            if response.status == 200:
-                return url, None
-        except Exception:  # pylint: disable=broad-exception-caught
-            pass
+            xhr = XMLHttpRequest.new()
+            # Open synchronous request (False = synchronous)
+            xhr.open("GET", f"{url}/api/v1/status", False)
+            xhr.timeout = int(timeout * 1000)  # Convert to milliseconds
+            try:
+                xhr.send()
+                logger.debug(f"Port probe response: status={xhr.status}")
+                if xhr.status == 200:
+                    logger.info(f"Found DataLab at {url}")
+                    return url, None
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                # Network error or timeout - likely CORS or Private Network Access block
+                logger.debug(f"Port probe network error: {e}")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.debug(f"Port probe XMLHttpRequest error: {e}")
     else:
         # Use httpx in native Python
         try:
@@ -205,7 +219,9 @@ def _probe_wellknown_port(timeout: float = 2.0) -> tuple[str | None, str | None]
 
             with httpx.Client(timeout=timeout) as client:
                 response = client.get(f"{url}/api/v1/status")
+                logger.debug(f"Port probe response: status={response.status_code}")
                 if response.status_code == 200:
+                    logger.info(f"Found DataLab at {url}")
                     return url, None
         except Exception:  # pylint: disable=broad-exception-caught
             pass
