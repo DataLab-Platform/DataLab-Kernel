@@ -51,8 +51,8 @@ jobs:
 
     - name: Install DataLab and dependencies
       run: |
-        # TODO: Restore PyPI installation for main branch once feature/webapi is merged
-        # Clone and install development versions (using feature/webapi branch)
+        # TODO: Restore PyPI installation for main branch once Web API feature is merged
+        # Clone and install development versions (using develop branch)
         cd ..
         git clone --depth 1 https://github.com/PlotPyStack/PythonQwt.git
         if [ "${{ github.ref_name }}" = "develop" ]; then
@@ -64,7 +64,7 @@ jobs:
           git clone --depth 1 https://github.com/PlotPyStack/plotpy.git
           git clone --depth 1 https://github.com/DataLab-Platform/sigima.git
         fi
-        git clone --depth 1 --branch feature/webapi https://github.com/DataLab-Platform/DataLab.git
+        git clone --depth 1 --branch develop https://github.com/DataLab-Platform/DataLab.git
         cd DataLab-Kernel
         pip install -e ../guidata
         pip install -e ../PythonQwt

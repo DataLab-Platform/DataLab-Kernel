@@ -4,6 +4,7 @@
 [![pypi version](https://img.shields.io/pypi/v/datalab-kernel.svg)](https://pypi.org/project/datalab-kernel/)
 [![PyPI status](https://img.shields.io/pypi/status/datalab-kernel.svg)](https://github.com/DataLab-Platform/DataLab-Kernel)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/datalab-kernel.svg)](https://pypi.org/project/datalab-kernel/)
+[![DataLab-Kernel Quick Start](https://img.shields.io/badge/notebook-link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb)
 
 **A standalone [Xeus-Python](https://github.com/jupyter-xeus/xeus-python)-based Jupyter kernel providing seamless, reproducible access to DataLab workspaces, with optional live synchronization to the DataLab GUI.**
 
@@ -35,7 +36,7 @@ It is a **complementary execution layer** that turns DataLab into a hybrid scien
 
 **Experience DataLab-Kernel instantly in your browser** — no installation required!
 
-[![Try it online](https://img.shields.io/badge/Try_it-online-blue?logo=jupyter)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb)
+[![DataLab-Kernel Quick Start](https://img.shields.io/badge/notebook-link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb)
 
 Click the badge above to open the quickstart notebook in a live JupyterLite environment powered by [**notebook.link**](https://notebook.link/). This service, developed by [**QuantStack**](https://quantstack.net/), enables sharing and running Jupyter notebooks directly in the browser with zero setup.
 
