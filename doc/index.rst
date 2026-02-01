@@ -80,6 +80,29 @@ Key Features
     Works in native Jupyter (JupyterLab, Notebook, VS Code) and
     `JupyterLite <https://jupyterlite.readthedocs.io/>`_ (browser-based, no server required).
 
+
+Try it Online
+-------------
+
+**Experience DataLab-Kernel instantly in your browser** — no installation required!
+
+.. image:: https://img.shields.io/badge/Try_it-online-blue?logo=jupyter
+   :target: https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb
+   :alt: Try it online
+
+Click the badge above to open the quickstart notebook in a live JupyterLite
+environment powered by `notebook.link <https://notebook.link/>`_. This service,
+developed by `QuantStack <https://quantstack.net/>`_, enables sharing and running
+Jupyter notebooks directly in the browser with zero setup.
+
+Simply run the cells to explore:
+
+- Loading the DataLab-Kernel extension
+- Accessing workspace objects
+- Visualizing images inline
+- Processing data with Sigima
+
+
 **Unified API**
     Same code works in both modes - switch seamlessly between local notebooks
     and DataLab-connected workflows.

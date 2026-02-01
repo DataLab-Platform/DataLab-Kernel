@@ -31,6 +31,23 @@ It is a **complementary execution layer** that turns DataLab into a hybrid scien
 
 ---
 
+## Try it Online
+
+**Experience DataLab-Kernel instantly in your browser** — no installation required!
+
+[![Try it online](https://img.shields.io/badge/Try_it-online-blue?logo=jupyter)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb)
+
+Click the badge above to open the quickstart notebook in a live JupyterLite environment powered by [**notebook.link**](https://notebook.link/). This service, developed by [**QuantStack**](https://quantstack.net/), enables sharing and running Jupyter notebooks directly in the browser with zero setup.
+
+Simply run the cells to explore:
+
+- Loading the DataLab-Kernel extension
+- Accessing workspace objects
+- Visualizing images inline
+- Processing data with Sigima
+
+---
+
 ## Key Features
 
 - **Single, stable user API**
