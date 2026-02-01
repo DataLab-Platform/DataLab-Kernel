@@ -198,17 +198,17 @@
             "channel": "emscripten-forge",
             "version": "2020.2"
         },
-        "sigima-1.0.6-pyhd8ed1ab_0.conda": {
+        "sigima-1.1.0-pyhd8ed1ab_0.conda": {
             "hash": {
-                "md5": "5a679e4f8e99932ffa4b2e95a769c8dc",
-                "sha256": "81c1b62b537ea1cdced1dcdf5a3163049c8ff403a2ea2fe651127f0ab881e4ca"
+                "md5": "1c995b01544f58d2759d9bd674eb94f8",
+                "sha256": "308f0e087e36aa6b8008dacdf9e7df7c15d8989cdd0ec6164b883718c5ddd466"
             },
             "name": "sigima",
-            "size": 8959431,
+            "size": 8818603,
             "build": "pyhd8ed1ab_0",
             "subdir": "noarch",
             "channel": "conda-forge",
-            "version": "1.0.6"
+            "version": "1.1.0"
         },
         "cycler-0.12.1-pyhcf101f3_2.conda": {
             "hash": {
@@ -647,17 +647,17 @@
             "channel": "emscripten-forge",
             "version": "1.3.3"
         },
-        "datalab-kernel-0.2.6-pyhd8ed1ab_0.conda": {
+        "datalab-kernel-0.2.7-pyhd8ed1ab_0.conda": {
             "hash": {
-                "md5": "0f7f0724a7ff6dab974738447d3f8a43",
-                "sha256": "0dab3e2974777cfee6a865a9bff53845e5bf3fbfde7fd3607cf1f45d1525ff1f"
+                "md5": "5e1771e3c1b6cc2e322de28c0ad803d5",
+                "sha256": "53214b0f8b4aa0cecb528abd4705c4974860f59e0ccedec664d9a8884c65b7d0"
             },
             "name": "datalab-kernel",
-            "size": 57148,
+            "size": 57606,
             "build": "pyhd8ed1ab_0",
             "subdir": "noarch",
             "channel": "conda-forge",
-            "version": "0.2.6"
+            "version": "0.2.7"
         },
         "exceptiongroup-1.3.1-pyhd8ed1ab_0.conda": {
             "hash": {
