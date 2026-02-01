@@ -26,14 +26,28 @@ Dual Operating Modes
 Connection Methods
 ------------------
 
-**Web API** (recommended)
+**Auto-Discovery** (recommended)
 
-Connect via HTTP/JSON using environment variables:
+DataLab-Kernel automatically discovers and connects to running DataLab instances.
+No configuration needed in most cases:
 
-.. code-block:: bash
+.. code-block:: python
 
-    export DATALAB_WORKSPACE_URL=http://127.0.0.1:8080
-    export DATALAB_WORKSPACE_TOKEN=<your-token>
+    %load_ext datalab_kernel
+
+    # Connected automatically!
+    workspace.list()
+
+Auto-discovery tries these methods in order:
+
+1. Environment variables (``DATALAB_WORKSPACE_URL``, ``DATALAB_WORKSPACE_TOKEN``)
+2. Connection file written by DataLab (native Python only)
+3. URL query parameters (JupyterLite: ``?datalab_url=...&datalab_token=...``)
+4. Well-known port probing (``http://127.0.0.1:18080``)
+
+**Web API**
+
+Connect via HTTP/JSON using the REST API. This is what auto-discovery uses.
 
 Features:
 
@@ -41,6 +55,12 @@ Features:
 - Efficient NPZ binary format for data transfer
 - Bearer token authentication
 - Modern REST API
+
+For manual connection (e.g., remote DataLab):
+
+.. code-block:: python
+
+    workspace.connect(url="http://192.168.1.100:18080", token="your-token")
 
 **XML-RPC** (legacy)
 
@@ -57,10 +77,10 @@ No configuration required.
      - Default
    * - ``DATALAB_WORKSPACE_URL``
      - Web API server URL
-     - (none)
+     - Auto-discovered
    * - ``DATALAB_WORKSPACE_TOKEN``
      - Web API authentication token
-     - (none)
+     - Auto-discovered
    * - ``DATALAB_KERNEL_MODE``
      - Force mode: ``auto``, ``live``, ``standalone``
      - ``auto``

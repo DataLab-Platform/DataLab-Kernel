@@ -100,8 +100,12 @@ Depending on the execution context:
 
 Two connection methods are supported:
 
-- **Web API** (recommended): HTTP/JSON connection using `DATALAB_WORKSPACE_URL` and `DATALAB_WORKSPACE_TOKEN` environment variables
+- **Auto-discovery** (recommended): DataLab-Kernel automatically finds running DataLab instances
+  via a connection file written by DataLab, or by probing the well-known port (18080)
 - **XML-RPC** (legacy): Automatic connection when DataLab is running with remote control enabled
+
+**No environment variables or manual configuration needed** — just start DataLab with
+the Web API enabled and load the kernel extension.
 
 ### Standalone Mode (Notebook-only)
 

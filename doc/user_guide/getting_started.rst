@@ -88,18 +88,46 @@ Check your current mode:
 Connecting via Web API
 ----------------------
 
-DataLab-Kernel supports two connection methods:
+DataLab-Kernel automatically discovers and connects to a running DataLab instance.
+No configuration is needed in most cases.
 
-**Web API** (recommended for new projects)
+**Auto-Discovery (recommended)**
 
-Set environment variables before starting your notebook:
+Simply start DataLab with the Web API enabled (View → Web API → Start Web API Server),
+then load the kernel extension:
+
+.. code-block:: python
+
+    %load_ext datalab_kernel
+
+    # Already connected! Start using workspace immediately:
+    workspace.list()
+
+The auto-discovery mechanism tries the following methods in order:
+
+1. **Environment variables** (``DATALAB_WORKSPACE_URL``, ``DATALAB_WORKSPACE_TOKEN``)
+2. **Connection file** written by DataLab to ``~/.config/datalab/webapi_connection.json``
+   (Linux/Mac) or ``%APPDATA%/datalab/webapi_connection.json`` (Windows)
+3. **URL query parameters** (JupyterLite: ``?datalab_url=...&datalab_token=...``)
+4. **Well-known port probing** (``http://127.0.0.1:18080`` with localhost bypass enabled)
+
+If discovery fails, the workspace starts in standalone mode and you can connect later.
+
+**Manual Connection**
+
+If auto-discovery doesn't work (e.g., running on a different machine), set
+environment variables before starting your notebook:
 
 .. code-block:: bash
 
-    export DATALAB_WORKSPACE_URL=http://127.0.0.1:8080
+    export DATALAB_WORKSPACE_URL=http://127.0.0.1:18080
     export DATALAB_WORKSPACE_TOKEN=<your-token>
 
-Then start your notebook. The workspace will automatically connect via HTTP/JSON.
+Or call ``connect()`` explicitly:
+
+.. code-block:: python
+
+    workspace.connect(url="http://192.168.1.100:18080", token="your-token")
 
 **XML-RPC** (legacy)
 

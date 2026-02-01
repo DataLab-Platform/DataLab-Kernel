@@ -236,7 +236,7 @@ class HttpxClientWrapper:
 
 
 def create_http_client(
-    base_url: str, token: str, timeout: float = 30.0
+    base_url: str, token: str | None, timeout: float = 30.0
 ) -> PyodideHttpClient | HttpxClientWrapper:
     """Create an HTTP client appropriate for the current environment.
 
@@ -245,13 +245,15 @@ def create_http_client(
 
     Args:
         base_url: Base URL for the API
-        token: Bearer token for authentication
+        token: Bearer token for authentication (optional for localhost bypass)
         timeout: Request timeout in seconds
 
     Returns:
         HTTP client instance
     """
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     if is_pyodide():
         return PyodideHttpClient(base_url, headers, timeout)

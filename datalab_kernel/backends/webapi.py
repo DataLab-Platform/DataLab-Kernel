@@ -77,14 +77,16 @@ class WebApiBackend:
         """Initialize the Web API backend.
 
         Args:
-            base_url: Base URL of the DataLab Web API (e.g., "http://127.0.0.1:8080").
+            base_url: Base URL of the DataLab Web API (e.g., "http://127.0.0.1:18080").
                 If None, reads from DATALAB_WORKSPACE_URL environment variable.
             token: Authentication token. If None, reads from DATALAB_WORKSPACE_TOKEN.
+                Token may be omitted if server allows localhost connections without
+                authentication (localhost bypass mode).
             timeout: Request timeout in seconds.
 
         Raises:
             ImportError: If httpx is not installed (native Python only).
-            ValueError: If URL or token is not provided.
+            ValueError: If URL is not provided.
         """
         self._base_url = base_url or os.environ.get("DATALAB_WORKSPACE_URL")
         self._token = token or os.environ.get("DATALAB_WORKSPACE_TOKEN")
@@ -96,11 +98,8 @@ class WebApiBackend:
                 "Set DATALAB_WORKSPACE_URL environment variable or pass base_url."
             )
 
-        if not self._token:
-            raise ValueError(
-                "DataLab Web API token not provided. "
-                "Set DATALAB_WORKSPACE_TOKEN environment variable or pass token."
-            )
+        # Token is optional (server may allow localhost bypass)
+        # We'll try to connect and let the server decide
 
         # Ensure base URL doesn't have trailing slash
         self._base_url = self._base_url.rstrip("/")

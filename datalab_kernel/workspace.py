@@ -130,7 +130,7 @@ class Workspace:
         """Auto-detect and create appropriate backend.
 
         Priority order:
-        1. WebAPI backend if DATALAB_WORKSPACE_URL is set
+        1. WebAPI backend if connection can be discovered (env vars, file, port probe)
         2. StandaloneBackend (fallback)
         """
         logger = logging.getLogger("datalab-kernel")
@@ -143,20 +143,23 @@ class Workspace:
 
             return StandaloneBackend(), WorkspaceMode.STANDALONE
 
-        # Try WebAPI (if URL is set)
-        webapi_url = os.environ.get("DATALAB_WORKSPACE_URL")
-        if webapi_url:
+        # Try to discover DataLab connection
+        from datalab_kernel.discovery import discover_connection
+
+        url, token = discover_connection(probe_port=True, timeout=1.0)
+
+        if url:
             try:
                 from datalab_kernel.backends.webapi import WebApiBackend
 
-                backend = WebApiBackend()
+                backend = WebApiBackend(base_url=url, token=token)
                 return backend, WorkspaceMode.LIVE
             except Exception as e:  # pylint: disable=broad-exception-caught
                 logger.warning(f"Failed to connect to DataLab Web API: {e}")
                 if kernel_mode == "live":
                     # User explicitly requested live mode, raise error
                     raise ConnectionError(
-                        f"Failed to connect to DataLab Web API at {webapi_url}: {e}"
+                        f"Failed to connect to DataLab Web API at {url}: {e}"
                     ) from None
                 # Fall through to standalone
 
@@ -202,27 +205,56 @@ class Workspace:
         """Connect to DataLab Web API.
 
         Attempts to establish a connection to DataLab using the Web API.
+        If no URL/token are provided, auto-discovery is attempted using:
+
+        1. Environment variables (DATALAB_WORKSPACE_URL, DATALAB_WORKSPACE_TOKEN)
+        2. Connection file written by DataLab
+        3. URL query parameters (for JupyterLite)
+        4. Well-known port probing (http://127.0.0.1:18080)
+
         If currently in standalone mode with objects, they will be
         transferred to the DataLab workspace.
 
         Args:
-            url: DataLab Web API URL (e.g., "http://127.0.0.1:8080").
-                If None, reads from DATALAB_WORKSPACE_URL.
-            token: Authentication token. If None, reads from DATALAB_WORKSPACE_TOKEN.
+            url: DataLab Web API URL (e.g., "http://127.0.0.1:18080").
+                If None, attempts auto-discovery.
+            token: Authentication token. If None, attempts auto-discovery.
+                May be omitted if server allows localhost connections without token.
 
         Returns:
             True if connected successfully, False otherwise.
 
         Example::
 
-            # Connect using environment variables
+            # Auto-discover DataLab (recommended)
             workspace.connect()
 
             # Connect with explicit credentials
-            workspace.connect("http://127.0.0.1:8080", "my-token")
+            workspace.connect("http://127.0.0.1:18080", "my-token")
         """
         if self._mode == WorkspaceMode.LIVE:
             return True  # Already connected
+
+        # Auto-discover if URL not provided
+        if url is None:
+            from datalab_kernel.discovery import discover_connection
+
+            discovered_url, discovered_token = discover_connection()
+            if discovered_url:
+                url = discovered_url
+                # Use discovered token if not explicitly provided
+                if token is None:
+                    token = discovered_token
+            else:
+                print(
+                    "Could not auto-discover DataLab Web API.\n"
+                    "Make sure DataLab is running with Web API enabled:\n"
+                    "  1. In DataLab: Tools → Web API → Start\n"
+                    "  2. Or set environment variables:\n"
+                    "     DATALAB_WORKSPACE_URL=http://127.0.0.1:18080\n"
+                    "     DATALAB_WORKSPACE_TOKEN=<your-token>"
+                )
+                return False
 
         try:
             from datalab_kernel.backends.webapi import WebApiBackend
