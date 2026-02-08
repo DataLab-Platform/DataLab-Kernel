@@ -86,7 +86,7 @@ Try it Online
 
 **Experience DataLab-Kernel instantly in your browser** — no installation required!
 
-.. image:: https://img.shields.io/badge/Try_it-online-blue?logo=jupyter
+.. image:: https://img.shields.io/badge/notebook-link-e2d610?logo=jupyter&logoColor=white
    :target: https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb
    :alt: Try it online
 
