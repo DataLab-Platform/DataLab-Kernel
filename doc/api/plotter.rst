@@ -85,9 +85,6 @@ Signals are plotted as line plots:
 
     plotter.plot("my_signal")
 
-    # With custom options
-    plotter.plot("my_signal", color="red", linewidth=2)
-
 Image Plotting
 --------------
 
@@ -97,8 +94,8 @@ Images are displayed as 2D colormaps:
 
     plotter.plot("my_image")
 
-    # With colormap and colorbar
-    plotter.plot("my_image", cmap="viridis", colorbar=True)
+    # With a specific colormap
+    plotter.plot("my_image", colormap="hot")
 
-    # With specific value range
-    plotter.plot("my_image", vmin=0, vmax=100)
+    # Override the auto-computed figure height (pixels)
+    plotter.plot("my_image", height=600)

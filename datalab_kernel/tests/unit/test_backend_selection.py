@@ -28,13 +28,13 @@ from datalab_kernel.plotter import (
     plotly_available,
     resolve_backend,
 )
+from datalab_kernel.tests.data import make_test_signal
+from datalab_kernel.workspace import Workspace
 
 # Grab the *module* from sys.modules because the ``plotter`` attribute on the
 # ``datalab_kernel`` package is shadowed by a global variable (``None`` until
 # the kernel starts).  ``mock.patch.object`` then patches the correct namespace.
 _plotter_mod = sys.modules["datalab_kernel.plotter"]
-from datalab_kernel.tests.data import make_test_signal
-from datalab_kernel.workspace import Workspace
 
 pytestmark = [pytest.mark.standalone]
 

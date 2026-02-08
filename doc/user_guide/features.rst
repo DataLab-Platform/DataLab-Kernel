@@ -183,8 +183,11 @@ Usage:
     # Signal plotting (uses the best available backend)
     plotter.plot("signal_name")
 
-    # Image plotting
-    plotter.plot("image_name", cmap="viridis", colorbar=True)
+    # Image plotting with a specific colormap
+    plotter.plot("image_name", colormap="hot")
+
+    # Override the auto-computed figure height (pixels)
+    plotter.plot("image_name", height=600)
 
     # Check which backend is active
     print(plotter.backend)  # "plotly" or "matplotlib"

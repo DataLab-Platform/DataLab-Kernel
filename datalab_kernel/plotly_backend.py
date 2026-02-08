@@ -564,6 +564,50 @@ def _get_image_coords(obj) -> tuple[np.ndarray, np.ndarray]:
     return x_coords, y_coords
 
 
+#: Default plot width in pixels for single-image figures.
+_IMAGE_BASE_WIDTH = 700
+
+#: Extra height in pixels for title, axis labels, and margins.
+_IMAGE_HEIGHT_PADDING = 80
+
+#: Minimum / maximum figure height (px) to keep the output readable.
+_IMAGE_MIN_HEIGHT = 350
+_IMAGE_MAX_HEIGHT = 750
+
+
+def _compute_image_figure_dims(
+    data: np.ndarray,
+    x_coords: np.ndarray,
+    y_coords: np.ndarray,
+    base_width: int = _IMAGE_BASE_WIDTH,
+) -> tuple[int, int]:
+    """Compute figure width and height for an image plot.
+
+    Derives the height from the image's physical aspect ratio so that the
+    heatmap fills the plotting area without excessive whitespace.
+
+    Args:
+        data: 2-D image array (used as fallback for shape)
+        x_coords: 1-D array of X pixel-centre coordinates
+        y_coords: 1-D array of Y pixel-centre coordinates
+        base_width: Desired figure width in pixels
+
+    Returns:
+        ``(width, height)`` in pixels
+    """
+    x_range = float(np.ptp(x_coords)) if len(x_coords) > 1 else 1.0
+    y_range = float(np.ptp(y_coords)) if len(y_coords) > 1 else 1.0
+    if x_range <= 0:
+        x_range = 1.0
+    if y_range <= 0:
+        y_range = 1.0
+
+    aspect = y_range / x_range  # height / width in data space
+    plot_height = int(base_width * aspect) + _IMAGE_HEIGHT_PADDING
+    plot_height = max(_IMAGE_MIN_HEIGHT, min(_IMAGE_MAX_HEIGHT, plot_height))
+    return base_width, plot_height
+
+
 def _figure_to_html(fig: go.Figure) -> str:
     """Convert a Plotly figure to an embeddable HTML fragment.
 
@@ -648,7 +692,8 @@ class PlotlyPlotResult:
             show_roi: Whether to show ROIs
             show_results: Whether to show geometry/table results from metadata
             results: Optional list of GeometryResult objects to overlay
-            **kwargs: Additional plotting options
+            **kwargs: Additional plotting options (e.g., ``colormap``,
+             ``height`` to override the auto-computed figure height in pixels)
         """
         self._obj = obj
         self._title = title
@@ -935,12 +980,21 @@ class PlotlyPlotResult:
             getattr(obj, "ylabel", None), getattr(obj, "yunit", None)
         )
 
+        # Figure dimensions based on image aspect ratio
+        fig_w, fig_h = _compute_image_figure_dims(data, x_coords, y_coords)
+        # Allow user override via kwargs
+        fig_h = self._kwargs.get("height", fig_h)
+
         layout_kw: dict = {
             "title": title,
             "xaxis_title": xlabel_str,
             "yaxis_title": ylabel_str,
             "template": "plotly_white",
             "yaxis_autorange": "reversed",  # Top-left origin like DataLab
+            "yaxis_scaleanchor": "x",  # Equal aspect ratio
+            "yaxis_constrain": "domain",
+            "width": fig_w,
+            "height": fig_h,
         }
 
         # Log scale
@@ -1321,7 +1375,8 @@ class PlotlyMultiImageResult:
             show_results: Whether to show geometry/table results from metadata
             results: Optional list of GeometryResult objects to overlay
             rows: Fixed number of rows, or None to compute automatically
-            **kwargs: Additional options (e.g., colormap)
+            **kwargs: Additional options (e.g., ``colormap``,
+             ``height`` to override auto-computed per-subplot height in pixels)
         """
         self._objs = objs
         self._title = title
@@ -1517,9 +1572,17 @@ class PlotlyMultiImageResult:
                     col=col,
                 )
 
-            # Reverse Y axis for this subplot
+            # Reverse Y axis for this subplot + equal aspect ratio
             axis_suffix = "" if idx == 0 else str(idx + 1)
-            fig.update_layout(**{f"yaxis{axis_suffix}": {"autorange": "reversed"}})
+            fig.update_layout(
+                **{
+                    f"yaxis{axis_suffix}": {
+                        "autorange": "reversed",
+                        "scaleanchor": f"x{axis_suffix or ''}",
+                        "constrain": "domain",
+                    }
+                }
+            )
 
             # Axis labels
             xlabel_str = _format_axis_title(x_label, x_unit)
@@ -1567,12 +1630,33 @@ class PlotlyMultiImageResult:
                     if ann_text:
                         _add_result_annotation(fig, ann_text, row=row, col=col)
 
-        # Overall layout
+        # Overall layout — derive height from first image's aspect ratio
+        first_data = self._objs[0]
+        if hasattr(first_data, "data"):
+            _fd = first_data.data
+        elif isinstance(first_data, np.ndarray):
+            _fd = first_data
+        else:
+            _fd = np.empty((1, 1))
+        if np.iscomplexobj(_fd):
+            _fd = np.abs(_fd)
+        if hasattr(first_data, "xcoords") and _is_non_uniform_image(first_data):
+            _fx = np.asarray(first_data.xcoords)
+            _fy = np.asarray(first_data.ycoords)
+        elif hasattr(first_data, "data"):
+            _fx, _fy = _get_image_coords(first_data)
+        else:
+            nr, nc = _fd.shape[:2]
+            _fx = np.arange(nc, dtype=float)
+            _fy = np.arange(nr, dtype=float)
+        _cw, _ch = _compute_image_figure_dims(_fd, _fx, _fy, base_width=500)
+        # Allow user override via kwargs
+        _ch = self._kwargs.get("height", _ch)
         fig.update_layout(
             title=self._title or "Images",
             template="plotly_white",
-            height=500 * nrows,
-            width=550 * ncols,
+            height=_ch * nrows,
+            width=(_cw + 50) * ncols,
         )
 
         return fig
@@ -1782,7 +1866,8 @@ class PlotlyPlotter:
             show_roi: Whether to show ROIs defined in ImageObj instances
             show_results: Whether to show geometry/table results from metadata
             results: Optional list of GeometryResult objects to overlay
-            **kwargs: Additional plotting options (e.g., colormap)
+            **kwargs: Additional plotting options (e.g., ``colormap``,
+             ``height`` to override auto-computed figure height in pixels)
 
         Returns:
             PlotlyMultiImageResult with display capabilities

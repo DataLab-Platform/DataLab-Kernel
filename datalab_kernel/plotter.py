@@ -568,6 +568,11 @@ class Plotter:
         """Plot an object or retrieve and plot by name.
 
         See the active backend's ``plot`` method for full documentation.
+
+        Keyword Args:
+            height (int): Figure height in pixels (images only). Defaults to
+             an auto-computed value based on the image aspect ratio.
+            colormap (str): Colormap name override.
         """
         return self._delegate.plot(
             obj_or_name,
@@ -626,6 +631,11 @@ class Plotter:
 
         See the active backend's ``plot_images`` method for full
         documentation.
+
+        Keyword Args:
+            height (int): Per-subplot height in pixels. Defaults to an
+             auto-computed value based on the image aspect ratio.
+            colormap (str): Colormap name override.
         """
         return self._delegate.plot_images(
             objs_or_names,

@@ -359,7 +359,8 @@ class MplPlotResult:
             show_roi: Whether to show ROIs
             show_results: Whether to show geometry/table results from metadata
             results: Optional list of GeometryResult objects to overlay (for images)
-            **kwargs: Additional options
+            **kwargs: Additional options (e.g., ``colormap``,
+             ``height`` to override the default figure height in pixels)
         """
         self._obj = obj
         self._title = title
@@ -403,7 +404,10 @@ class MplPlotResult:
         obj_type = type(self._obj).__name__
         title = self._title or getattr(self._obj, "title", "")
 
-        fig, ax = plt.subplots(figsize=(8, 5))
+        # Figure size: honour user height override (pixels → inches at 100 dpi)
+        _dpi = 100
+        _h_in = self._kwargs.get("height", 500) / _dpi
+        fig, ax = plt.subplots(figsize=(8, _h_in))
 
         if obj_type == "SignalObj":
             self._render_signal(ax)
@@ -875,7 +879,8 @@ class MplMultiImageResult:
             results: Optional list of GeometryResult objects to overlay
             rows: Fixed number of rows in the grid, or None to compute automatically
             share_axes: Whether to share axes across plots
-            **kwargs: Additional options (e.g., colormap)
+            **kwargs: Additional options (e.g., ``colormap``,
+             ``height`` to override default per-subplot height in pixels)
         """
         self._objs = objs
         self._title = title
@@ -930,11 +935,13 @@ class MplMultiImageResult:
             ncols = min(4, n_images)
             nrows = (n_images + ncols - 1) // ncols
 
-        # Create figure
+        # Create figure — honour user height override (pixels → inches at 100 dpi)
+        _dpi = 100
+        _h_in = self._kwargs.get("height", 600) / _dpi
         fig, axes = plt.subplots(
             nrows,
             ncols,
-            figsize=(6 * ncols, 6 * nrows),
+            figsize=(6 * ncols, _h_in * nrows),
             sharex=self._share_axes,
             sharey=self._share_axes,
             squeeze=False,
