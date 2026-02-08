@@ -17,6 +17,12 @@ Usage:
     # Build only (no server)
     python scripts/serve_dev_wheels.py --build-only
 
+    # Build only DataLab-Kernel
+    python scripts/serve_dev_wheels.py --packages kernel
+
+    # Build specific packages
+    python scripts/serve_dev_wheels.py --packages guidata,sigima
+
 Then in JupyterLite:
     import micropip
     await micropip.install([
@@ -42,6 +48,13 @@ DEFAULT_SIGIMA_PATH = Path("C:/Dev/Sigima")
 DEFAULT_KERNEL_PATH = Path("C:/Dev/DataLab-Kernel")
 DEFAULT_WHEELS_DIR = Path("C:/Dev/wheels")
 DEFAULT_PORT = 8888
+
+# Known package names for --packages selection
+KNOWN_PACKAGES = {
+    "guidata": "guidata_path",
+    "sigima": "sigima_path",
+    "kernel": "kernel_path",
+}
 
 
 def ensure_build_module() -> bool:
@@ -246,19 +259,14 @@ def main():
         help="Serve existing wheels only, don't rebuild",
     )
     parser.add_argument(
-        "--skip-guidata",
-        action="store_true",
-        help="Skip building guidata wheel",
-    )
-    parser.add_argument(
-        "--skip-sigima",
-        action="store_true",
-        help="Skip building Sigima wheel",
-    )
-    parser.add_argument(
-        "--skip-kernel",
-        action="store_true",
-        help="Skip building DataLab-Kernel wheel",
+        "--packages",
+        type=str,
+        default="all",
+        help=(
+            "Comma-separated list of packages to build. "
+            "Choices: guidata, sigima, kernel, all "
+            "(default: all)"
+        ),
     )
 
     args = parser.parse_args()
@@ -272,20 +280,31 @@ def main():
         if not ensure_build_module():
             return 1
 
+        # Determine which packages to build
+        if args.packages.strip().lower() == "all":
+            selected = list(KNOWN_PACKAGES.keys())
+        else:
+            selected = [
+                p.strip().lower() for p in args.packages.split(",") if p.strip()
+            ]
+            unknown = [p for p in selected if p not in KNOWN_PACKAGES]
+            if unknown:
+                print(
+                    f"ERROR: Unknown package(s): {', '.join(unknown)}. "
+                    f"Valid choices: {', '.join(KNOWN_PACKAGES.keys())}, all"
+                )
+                return 1
+
+        # Map package names to project paths
+        path_map = {
+            "guidata": args.guidata_path,
+            "sigima": args.sigima_path,
+            "kernel": args.kernel_path,
+        }
+
         built_wheels = []
-
-        if not args.skip_guidata:
-            wheel = build_wheel(args.guidata_path, args.wheels_dir)
-            if wheel:
-                built_wheels.append(wheel)
-
-        if not args.skip_sigima:
-            wheel = build_wheel(args.sigima_path, args.wheels_dir)
-            if wheel:
-                built_wheels.append(wheel)
-
-        if not args.skip_kernel:
-            wheel = build_wheel(args.kernel_path, args.wheels_dir)
+        for pkg in selected:
+            wheel = build_wheel(path_map[pkg], args.wheels_dir)
             if wheel:
                 built_wheels.append(wheel)
 
