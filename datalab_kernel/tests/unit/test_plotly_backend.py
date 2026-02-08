@@ -15,15 +15,21 @@ skipped if plotly is unavailable.
 Pass ``--gui`` to open interactive HTML views in the browser.
 """
 
+# pylint: disable=protected-access
+
 from __future__ import annotations
+
+import atexit
 
 import numpy as np
 import pytest
+from sigima import create_image, create_signal
 
 plotly = pytest.importorskip("plotly", reason="plotly is not installed")
 
 pytestmark = [pytest.mark.standalone]
 
+# pylint: disable=wrong-import-position
 from datalab_kernel.backends import StandaloneBackend  # noqa: E402
 from datalab_kernel.plotly_backend import (  # noqa: E402
     PlotlyMultiImageResult,
@@ -161,8 +167,6 @@ def _show_gallery() -> None:
         f.write(html_page)
         webbrowser.open(f"file://{f.name}")
 
-
-import atexit  # noqa: E402
 
 atexit.register(_show_gallery)
 
@@ -494,8 +498,6 @@ class TestPlotlyEdgeCases:
 
     def test_signal_no_metadata(self):
         """Signal with no metadata options."""
-        from sigima import create_signal
-
         x = np.linspace(0, 5, 50)
         y = np.sin(x)
         sig = create_signal(title="bare", x=x, y=y)
@@ -504,8 +506,6 @@ class TestPlotlyEdgeCases:
 
     def test_image_no_metadata(self):
         """Image with no metadata options."""
-        from sigima import create_image
-
         data = np.random.rand(64, 64).astype(np.float32)
         img = create_image(title="bare", data=data)
         result = PlotlyPlotResult(img)

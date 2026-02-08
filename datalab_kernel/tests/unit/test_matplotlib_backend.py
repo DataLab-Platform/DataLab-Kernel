@@ -13,10 +13,15 @@ These tests run headlessly by default (Agg backend). Pass ``--gui`` to
 open interactive matplotlib windows for visual inspection.
 """
 
+# pylint: disable=protected-access
+
 from __future__ import annotations
+
+import atexit
 
 import numpy as np
 import pytest
+from sigima import create_image, create_signal
 
 from datalab_kernel.backends import StandaloneBackend
 from datalab_kernel.matplotlib_backend import (
@@ -177,7 +182,7 @@ def _show_gallery() -> None:
         pil_img = pil_images[idx].copy()
         avail_w = max(right.winfo_width() - 30, 400)
         avail_h = max(right.winfo_height() - 60, 400)
-        pil_img.thumbnail((avail_w, avail_h), Image.LANCZOS)
+        pil_img.thumbnail((avail_w, avail_h), Image.Resampling.LANCZOS)
         _tk_ref[0] = ImageTk.PhotoImage(pil_img)
         img_label.config(image=_tk_ref[0])
         title_var.set(_GUI_RESULTS[idx][0])
@@ -196,8 +201,6 @@ def _show_gallery() -> None:
 
     root.mainloop()
 
-
-import atexit  # noqa: E402
 
 atexit.register(_show_gallery)
 
@@ -720,8 +723,6 @@ class TestMplEdgeCases:
 
     def test_signal_no_metadata(self):
         """Signal with no metadata options (no __curvestyle, etc.)."""
-        from sigima import create_signal
-
         x = np.linspace(0, 5, 50)
         y = np.sin(x)
         sig = create_signal(title="bare", x=x, y=y)
@@ -730,8 +731,6 @@ class TestMplEdgeCases:
 
     def test_image_no_metadata(self):
         """Image with no metadata options (no __colormap, etc.)."""
-        from sigima import create_image
-
         data = np.random.rand(64, 64).astype(np.float32)
         img = create_image(title="bare", data=data)
         result = MplPlotResult(img)
@@ -745,8 +744,6 @@ class TestMplEdgeCases:
 
     def test_single_point_signal(self):
         """Signal with a single data point."""
-        from sigima import create_signal
-
         sig = create_signal(title="1pt", x=np.array([1.0]), y=np.array([2.0]))
         result = MplPlotResult(sig)
         _assert_valid_png(result._repr_png_())
