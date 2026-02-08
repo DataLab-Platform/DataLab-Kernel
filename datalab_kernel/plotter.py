@@ -24,12 +24,10 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
-    from datalab_kernel.workspace import DataObject, Workspace
+    from datalab_kernel.workspace import Workspace
 
 # Style configuration constants
 MASK_OPACITY = 0.35  # Opacity for mask overlay
@@ -748,13 +746,13 @@ class GeometryResultDisplay:
 from datalab_kernel.matplotlib_backend import (  # noqa: E402
     MatplotlibPlotter,
 )
-from datalab_kernel.matplotlib_backend import (
+from datalab_kernel.matplotlib_backend import (  # noqa: E402
     MplMultiImageResult as MultiImagePlotResult,
 )
-from datalab_kernel.matplotlib_backend import (
+from datalab_kernel.matplotlib_backend import (  # noqa: E402
     MplMultiSignalResult as MultiSignalPlotResult,
 )
-from datalab_kernel.matplotlib_backend import (
+from datalab_kernel.matplotlib_backend import (  # noqa: E402
     MplPlotResult as PlotResult,
 )
 

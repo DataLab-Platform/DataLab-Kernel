@@ -19,8 +19,6 @@ import numpy as np
 import pytest
 
 from datalab_kernel.backends import StandaloneBackend
-
-pytestmark = [pytest.mark.standalone]
 from datalab_kernel.matplotlib_backend import (
     MatplotlibPlotter,
     MplMultiImageResult,
@@ -59,6 +57,8 @@ from datalab_kernel.tests.data import (
     make_test_signal_with_roi,
 )
 from datalab_kernel.workspace import Workspace
+
+pytestmark = [pytest.mark.standalone]
 
 PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 

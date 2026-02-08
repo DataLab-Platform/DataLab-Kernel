@@ -14,11 +14,11 @@ from __future__ import annotations
 import pytest
 
 from datalab_kernel.backends import StandaloneBackend
-
-pytestmark = [pytest.mark.standalone]
 from datalab_kernel.plotter import PlotResult, Plotter
 from datalab_kernel.tests.data import make_test_image, make_test_signal
 from datalab_kernel.workspace import Workspace
+
+pytestmark = [pytest.mark.standalone]
 
 
 class TestPlotterBasic:

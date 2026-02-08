@@ -290,7 +290,7 @@ def _add_result_annotation(fig: go.Figure, text: str, row=None, col=None) -> Non
         yref=yref,
         text=text,
         showarrow=False,
-        font=dict(family="monospace", size=11),
+        font={"family": "monospace", "size": 11},
         align="left",
         bgcolor="rgba(255, 255, 255, 0.85)",
         bordercolor="gray",
@@ -318,7 +318,7 @@ def _add_signal_roi_shapes(fig: go.Figure, obj) -> None:
                 x0=x0,
                 x1=x1,
                 fillcolor=ROI_FILL_COLOR,
-                line=dict(color=ROI_COLOR, width=2),
+                line={"color": ROI_COLOR, "width": 2},
                 annotation_text="ROI",
                 annotation_position="top left",
             )
@@ -352,7 +352,7 @@ def _add_image_roi_shapes(
                 y0=y0,
                 x1=x0 + dx,
                 y1=y0 + dy,
-                line=dict(color="red", width=2),
+                line={"color": "red", "width": 2},
                 **shape_kwargs,
             )
         elif roi_class == "CircularROI":
@@ -363,7 +363,7 @@ def _add_image_roi_shapes(
                 y0=yc - r,
                 x1=xc + r,
                 y1=yc + r,
-                line=dict(color="red", width=2),
+                line={"color": "red", "width": 2},
                 **shape_kwargs,
             )
         elif roi_class == "PolygonalROI":
@@ -375,7 +375,7 @@ def _add_image_roi_shapes(
             fig.add_shape(
                 type="path",
                 path=path,
-                line=dict(color="red", width=2),
+                line={"color": "red", "width": 2},
                 **shape_kwargs,
             )
 
@@ -418,11 +418,11 @@ def _add_geometry_traces(
                     x=[x0],
                     y=[y0],
                     mode="markers",
-                    marker=dict(
-                        color="yellow",
-                        size=8,
-                        line=dict(color="black", width=1),
-                    ),
+                    marker={
+                        "color": "yellow",
+                        "size": 8,
+                        "line": {"color": "black", "width": 1},
+                    },
                     showlegend=False,
                 ),
                 **trace_kwargs,
@@ -432,13 +432,13 @@ def _add_geometry_traces(
             # Crosshair lines
             fig.add_hline(
                 y=y0,
-                line=dict(color="yellow", width=1, dash="dash"),
+                line={"color": "yellow", "width": 1, "dash": "dash"},
                 opacity=0.7,
                 **shape_kwargs,
             )
             fig.add_vline(
                 x=x0,
-                line=dict(color="yellow", width=1, dash="dash"),
+                line={"color": "yellow", "width": 1, "dash": "dash"},
                 opacity=0.7,
                 **shape_kwargs,
             )
@@ -447,12 +447,12 @@ def _add_geometry_traces(
                     x=[x0],
                     y=[y0],
                     mode="markers",
-                    marker=dict(
-                        symbol="cross",
-                        color="yellow",
-                        size=12,
-                        line=dict(color="yellow", width=2),
-                    ),
+                    marker={
+                        "symbol": "cross",
+                        "color": "yellow",
+                        "size": 12,
+                        "line": {"color": "yellow", "width": 2},
+                    },
                     showlegend=False,
                 ),
                 **trace_kwargs,
@@ -465,7 +465,7 @@ def _add_geometry_traces(
                 y0=y0,
                 x1=x0 + dx,
                 y1=y0 + dy,
-                line=dict(color="yellow", width=2, dash="dash"),
+                line={"color": "yellow", "width": 2, "dash": "dash"},
                 **shape_kwargs,
             )
         elif result.kind == KindShape.CIRCLE:
@@ -476,7 +476,7 @@ def _add_geometry_traces(
                 y0=yc - r,
                 x1=xc + r,
                 y1=yc + r,
-                line=dict(color="yellow", width=2, dash="dash"),
+                line={"color": "yellow", "width": 2, "dash": "dash"},
                 **shape_kwargs,
             )
         elif result.kind == KindShape.SEGMENT:
@@ -487,7 +487,7 @@ def _add_geometry_traces(
                 y0=y0,
                 x1=x1,
                 y1=y1,
-                line=dict(color="yellow", width=2, dash="dash"),
+                line={"color": "yellow", "width": 2, "dash": "dash"},
                 **shape_kwargs,
             )
         elif result.kind == KindShape.ELLIPSE:
@@ -503,7 +503,7 @@ def _add_geometry_traces(
                     x=np.append(ex, ex[0]),
                     y=np.append(ey, ey[0]),
                     mode="lines",
-                    line=dict(color="yellow", width=2, dash="dash"),
+                    line={"color": "yellow", "width": 2, "dash": "dash"},
                     showlegend=False,
                 ),
                 **trace_kwargs,
@@ -516,8 +516,8 @@ def _add_geometry_traces(
                     x=np.append(xs, xs[0]),
                     y=np.append(ys, ys[0]),
                     mode="lines+markers",
-                    line=dict(color="yellow", width=2, dash="dash"),
-                    marker=dict(color="yellow", size=5),
+                    line={"color": "yellow", "width": 2, "dash": "dash"},
+                    marker={"color": "yellow", "size": 5},
                     showlegend=False,
                 ),
                 **trace_kwargs,
@@ -717,7 +717,7 @@ class PlotlyPlotResult:
                     x=xs,
                     y=ys,
                     mode="lines",
-                    line=dict(color=line_kw.get("color", PLOTLY_COLORS[0]), width=1),
+                    line={"color": line_kw.get("color", PLOTLY_COLORS[0]), "width": 1},
                     name=title,
                     showlegend=True,
                 )
@@ -737,9 +737,17 @@ class PlotlyPlotResult:
             error_x_kw = None
             error_y_kw = None
             if obj.dx is not None:
-                error_x_kw = dict(type="data", array=np.asarray(obj.dx), visible=True)
+                error_x_kw = {
+                    "type": "data",
+                    "array": np.asarray(obj.dx),
+                    "visible": True,
+                }
             if obj.dy is not None:
-                error_y_kw = dict(type="data", array=np.asarray(obj.dy), visible=True)
+                error_y_kw = {
+                    "type": "data",
+                    "array": np.asarray(obj.dy),
+                    "visible": True,
+                }
             fig.add_trace(
                 go.Scatter(
                     x=x,
@@ -772,13 +780,13 @@ class PlotlyPlotResult:
             getattr(obj, "ylabel", None), getattr(obj, "yunit", None)
         )
 
-        layout_kw: dict = dict(
-            title=title,
-            xaxis_title=xlabel_str,
-            yaxis_title=ylabel_str,
-            template="plotly_white",
-            showlegend=True,
-        )
+        layout_kw: dict = {
+            "title": title,
+            "xaxis_title": xlabel_str,
+            "yaxis_title": ylabel_str,
+            "template": "plotly_white",
+            "showlegend": True,
+        }
 
         # Log scale
         if getattr(obj, "xscalelog", False):
@@ -868,7 +876,7 @@ class PlotlyPlotResult:
                 zmin=vmin,
                 zmax=vmax,
                 colorscale=colormap,
-                colorbar=dict(title=cbar_title) if cbar_title else None,
+                colorbar={"title": cbar_title} if cbar_title else None,
             )
         )
 
@@ -899,13 +907,13 @@ class PlotlyPlotResult:
             getattr(obj, "ylabel", None), getattr(obj, "yunit", None)
         )
 
-        layout_kw: dict = dict(
-            title=title,
-            xaxis_title=xlabel_str,
-            yaxis_title=ylabel_str,
-            template="plotly_white",
-            yaxis_autorange="reversed",  # Top-left origin like DataLab
-        )
+        layout_kw: dict = {
+            "title": title,
+            "xaxis_title": xlabel_str,
+            "yaxis_title": ylabel_str,
+            "template": "plotly_white",
+            "yaxis_autorange": "reversed",  # Top-left origin like DataLab
+        }
 
         # Log scale
         if getattr(obj, "xscalelog", False):
@@ -1079,7 +1087,7 @@ class PlotlyMultiSignalResult:
                             x=xs,
                             y=ys,
                             mode="lines",
-                            line=dict(color=line_kw.get("color", color), width=1),
+                            line={"color": line_kw.get("color", color), "width": 1},
                             name=label,
                         )
                     )
@@ -1097,13 +1105,17 @@ class PlotlyMultiSignalResult:
                     error_x_kw = None
                     error_y_kw = None
                     if obj.dx is not None:
-                        error_x_kw = dict(
-                            type="data", array=np.asarray(obj.dx), visible=True
-                        )
+                        error_x_kw = {
+                            "type": "data",
+                            "array": np.asarray(obj.dx),
+                            "visible": True,
+                        }
                     if obj.dy is not None:
-                        error_y_kw = dict(
-                            type="data", array=np.asarray(obj.dy), visible=True
-                        )
+                        error_y_kw = {
+                            "type": "data",
+                            "array": np.asarray(obj.dy),
+                            "visible": True,
+                        }
                     fig.add_trace(
                         go.Scatter(
                             x=x,
@@ -1156,7 +1168,7 @@ class PlotlyMultiSignalResult:
                             fillcolor=_color_with_alpha(
                                 line_kw.get("color", color), 0.15
                             ),
-                            line=dict(color=line_kw.get("color", color), width=1),
+                            line={"color": line_kw.get("color", color), "width": 1},
                             annotation_text=(
                                 f"{label} ROI {roi_idx + 1}" if roi_idx == 0 else None
                             ),
@@ -1180,7 +1192,7 @@ class PlotlyMultiSignalResult:
                         x=np.asarray(xdata),
                         y=np.asarray(ydata),
                         mode="lines",
-                        line=dict(color=color, dash=dash),
+                        line={"color": color, "dash": dash},
                         name=f"Signal {idx + 1}",
                     )
                 )
@@ -1193,7 +1205,7 @@ class PlotlyMultiSignalResult:
                         x=xdata,
                         y=ydata,
                         mode="lines",
-                        line=dict(color=color, dash=dash),
+                        line={"color": color, "dash": dash},
                         name=f"Signal {idx + 1}",
                     )
                 )
@@ -1423,7 +1435,7 @@ class PlotlyMultiImageResult:
                     zmin=vmin,
                     zmax=vmax,
                     colorscale=colormap,
-                    colorbar=dict(title=cbar_title) if cbar_title else None,
+                    colorbar={"title": cbar_title} if cbar_title else None,
                 ),
                 row=row,
                 col=col,
@@ -1451,7 +1463,7 @@ class PlotlyMultiImageResult:
 
             # Reverse Y axis for this subplot
             axis_suffix = "" if idx == 0 else str(idx + 1)
-            fig.update_layout(**{f"yaxis{axis_suffix}": dict(autorange="reversed")})
+            fig.update_layout(**{f"yaxis{axis_suffix}": {"autorange": "reversed"}})
 
             # Axis labels
             xlabel_str = _format_axis_title(x_label, x_unit)
