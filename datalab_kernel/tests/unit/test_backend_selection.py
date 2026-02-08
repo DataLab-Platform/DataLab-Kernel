@@ -96,9 +96,7 @@ class TestResolveBackend:
         """Auto-detect returns plotly when only plotly is available."""
         with contextlib.ExitStack() as stack:
             stack.enter_context(
-                mock.patch(
-                    "datalab_kernel.plotter.plotly_available", return_value=True
-                )
+                mock.patch("datalab_kernel.plotter.plotly_available", return_value=True)
             )
             stack.enter_context(
                 mock.patch(
@@ -149,9 +147,7 @@ class TestResolveBackend:
                 )
             )
             stack.enter_context(
-                mock.patch(
-                    "datalab_kernel.plotter.plotly_available", return_value=True
-                )
+                mock.patch("datalab_kernel.plotter.plotly_available", return_value=True)
             )
             with pytest.warns(UserWarning, match="not installed.*Falling back"):
                 result = resolve_backend("matplotlib")
