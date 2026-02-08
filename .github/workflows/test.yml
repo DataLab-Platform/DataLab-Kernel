@@ -64,10 +64,10 @@ jobs:
           pip install -e ../PythonQwt
           pip install -e ../plotpy
           pip install -e ../sigima
-          pip install -e ../DataLab[webapi]
+          pip install -e ../DataLab
         else
           # Release: install from PyPI
-          pip install DataLab[webapi]
+          pip install datalab-platform
         fi
 
     - name: Install DataLab-Kernel
