@@ -77,7 +77,7 @@ jobs:
         # Install without deps (we already have them)
         pip install -e . --no-deps
         # Install remaining deps from pyproject.toml
-        pip install ipykernel jupyter-client numpy h5py matplotlib
+        pip install ipykernel jupyter-client numpy h5py matplotlib plotly
 
     - name: Lint with Ruff
       run: ruff check --output-format=github datalab_kernel
