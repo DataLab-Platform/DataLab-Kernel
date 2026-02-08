@@ -516,3 +516,46 @@ class TestPlotlyEdgeCases:
         img = make_test_image("tiny", (4, 4))
         result = PlotlyPlotResult(img)
         _assert_valid_html(result._repr_html_())
+
+
+# ============================================================================
+# MIME bundle (modern Jupyter/VS Code display)
+# ============================================================================
+
+
+class TestPlotlyMimeBundle:
+    """Test _repr_mimebundle_ for modern notebook frontends."""
+
+    def test_signal_mimebundle(self):
+        """Single signal returns Plotly JSON MIME type."""
+        sig = make_test_signal("mb_signal")
+        result = PlotlyPlotResult(sig, title="MB Signal")
+        bundle = result._repr_mimebundle_()
+        assert "application/vnd.plotly.v1+json" in bundle
+        assert "text/html" in bundle
+        plotly_data = bundle["application/vnd.plotly.v1+json"]
+        assert "data" in plotly_data
+        assert "layout" in plotly_data
+
+    def test_image_mimebundle(self):
+        """Single image returns Plotly JSON MIME type."""
+        img = make_test_image("mb_image", (64, 64))
+        result = PlotlyPlotResult(img, title="MB Image")
+        bundle = result._repr_mimebundle_()
+        assert "application/vnd.plotly.v1+json" in bundle
+        plotly_data = bundle["application/vnd.plotly.v1+json"]
+        assert "data" in plotly_data
+
+    def test_multi_signal_mimebundle(self):
+        """Multi-signal returns Plotly JSON MIME type."""
+        sigs = [make_test_signal(f"mb_s{i}") for i in range(2)]
+        result = PlotlyMultiSignalResult(sigs, title="MB Multi Signal")
+        bundle = result._repr_mimebundle_()
+        assert "application/vnd.plotly.v1+json" in bundle
+
+    def test_multi_image_mimebundle(self):
+        """Multi-image returns Plotly JSON MIME type."""
+        imgs = [make_test_image(f"mb_i{i}", (32, 32)) for i in range(2)]
+        result = PlotlyMultiImageResult(imgs, title="MB Multi Image")
+        bundle = result._repr_mimebundle_()
+        assert "application/vnd.plotly.v1+json" in bundle

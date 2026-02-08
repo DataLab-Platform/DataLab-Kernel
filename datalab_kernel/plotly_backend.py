@@ -578,6 +578,29 @@ def _figure_to_html(fig: go.Figure) -> str:
     return fig.to_html(include_plotlyjs="cdn", full_html=False)
 
 
+def _figure_to_mimebundle(fig: go.Figure) -> dict:
+    """Convert a Plotly figure to a Jupyter MIME bundle.
+
+    Returns a dictionary with the ``application/vnd.plotly.v1+json`` MIME type
+    so that JupyterLab, VS Code, and other modern notebook frontends render
+    the interactive figure natively, without relying on CDN ``<script>`` tags
+    (which are blocked by Content Security Policy in sandboxed outputs).
+
+    A ``text/html`` fallback is included for classic Jupyter Notebook.
+
+    Args:
+        fig: Plotly Figure object
+
+    Returns:
+        MIME bundle dictionary
+    """
+    bundle: dict = {
+        "application/vnd.plotly.v1+json": fig.to_plotly_json(),
+        "text/html": fig.to_html(include_plotlyjs="cdn", full_html=False),
+    }
+    return bundle
+
+
 def _figure_to_png_bytes(fig: go.Figure) -> bytes | None:
     """Attempt to convert a Plotly figure to PNG bytes.
 
@@ -635,6 +658,21 @@ class PlotlyPlotResult:
         self._kwargs = kwargs
 
     # ---- Jupyter display protocol ----
+
+    def _repr_mimebundle_(self, **kwargs) -> dict:
+        """Return MIME bundle for Jupyter display.
+
+        Provides the ``application/vnd.plotly.v1+json`` MIME type so that
+        JupyterLab, VS Code, and other modern notebook frontends can render
+        the interactive figure natively without relying on CDN scripts.
+        Falls back to HTML for classic Jupyter Notebook.
+        """
+        try:
+            fig = self._build_figure()
+            return _figure_to_mimebundle(fig)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            title = self._title or getattr(self._obj, "title", "Untitled")
+            return {"text/html": f"<div>Error rendering {title}: {exc}</div>"}
 
     def _repr_html_(self) -> str:
         """Return interactive HTML representation for Jupyter display."""
@@ -1003,6 +1041,20 @@ class PlotlyMultiSignalResult:
 
     # ---- Jupyter display protocol ----
 
+    def _repr_mimebundle_(self, **kwargs) -> dict:
+        """Return MIME bundle for Jupyter display.
+
+        Provides the ``application/vnd.plotly.v1+json`` MIME type so that
+        JupyterLab, VS Code, and other modern notebook frontends can render
+        the interactive figure natively without relying on CDN scripts.
+        Falls back to HTML for classic Jupyter Notebook.
+        """
+        try:
+            fig = self._build_figure()
+            return _figure_to_mimebundle(fig)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            return {"text/html": f"<div>Error rendering signals: {exc}</div>"}
+
     def _repr_html_(self) -> str:
         """Return interactive HTML representation for Jupyter display."""
         try:
@@ -1287,6 +1339,20 @@ class PlotlyMultiImageResult:
         self._kwargs = kwargs
 
     # ---- Jupyter display protocol ----
+
+    def _repr_mimebundle_(self, **kwargs) -> dict:
+        """Return MIME bundle for Jupyter display.
+
+        Provides the ``application/vnd.plotly.v1+json`` MIME type so that
+        JupyterLab, VS Code, and other modern notebook frontends can render
+        the interactive figure natively without relying on CDN scripts.
+        Falls back to HTML for classic Jupyter Notebook.
+        """
+        try:
+            fig = self._build_figure()
+            return _figure_to_mimebundle(fig)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            return {"text/html": f"<div>Error rendering images: {exc}</div>"}
 
     def _repr_html_(self) -> str:
         """Return interactive HTML representation for Jupyter display."""
