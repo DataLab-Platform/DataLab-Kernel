@@ -11,6 +11,7 @@ override, and fallback-with-warning behaviour.
 
 from __future__ import annotations
 
+import contextlib
 import os
 from unittest import mock
 
@@ -65,79 +66,112 @@ class TestResolveBackend:
 
     def test_auto_prefers_plotly(self):
         """Auto-detect prefers plotly when both are available."""
-        with (
-            mock.patch("datalab_kernel.plotter.plotly_available", return_value=True),
-            mock.patch(
-                "datalab_kernel.plotter.matplotlib_available", return_value=True
-            ),
-        ):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch("datalab_kernel.plotter.plotly_available", return_value=True)
+            )
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.matplotlib_available", return_value=True
+                )
+            )
             assert resolve_backend(None) == BACKEND_PLOTLY
 
     def test_auto_falls_back_to_matplotlib(self):
         """Auto-detect falls back to matplotlib when plotly is missing."""
-        with (
-            mock.patch("datalab_kernel.plotter.plotly_available", return_value=False),
-            mock.patch(
-                "datalab_kernel.plotter.matplotlib_available", return_value=True
-            ),
-        ):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.plotly_available", return_value=False
+                )
+            )
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.matplotlib_available", return_value=True
+                )
+            )
             assert resolve_backend(None) == BACKEND_MATPLOTLIB
 
     def test_auto_plotly_only(self):
         """Auto-detect returns plotly when only plotly is available."""
-        with (
-            mock.patch("datalab_kernel.plotter.plotly_available", return_value=True),
-            mock.patch(
-                "datalab_kernel.plotter.matplotlib_available", return_value=False
-            ),
-        ):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.plotly_available", return_value=True
+                )
+            )
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.matplotlib_available", return_value=False
+                )
+            )
             assert resolve_backend(None) == BACKEND_PLOTLY
 
     def test_neither_raises(self):
         """ImportError when neither backend is available."""
-        with (
-            mock.patch("datalab_kernel.plotter.plotly_available", return_value=False),
-            mock.patch(
-                "datalab_kernel.plotter.matplotlib_available", return_value=False
-            ),
-            pytest.raises(ImportError, match="Neither plotly nor matplotlib"),
-        ):
-            resolve_backend(None)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.plotly_available", return_value=False
+                )
+            )
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.matplotlib_available", return_value=False
+                )
+            )
+            with pytest.raises(ImportError, match="Neither plotly nor matplotlib"):
+                resolve_backend(None)
 
     def test_fallback_with_warning(self):
         """Falls back to the other backend with a warning."""
-        with (
-            mock.patch("datalab_kernel.plotter.plotly_available", return_value=False),
-            mock.patch(
-                "datalab_kernel.plotter.matplotlib_available", return_value=True
-            ),
-        ):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.plotly_available", return_value=False
+                )
+            )
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.matplotlib_available", return_value=True
+                )
+            )
             with pytest.warns(UserWarning, match="not installed.*Falling back"):
                 result = resolve_backend("plotly")
             assert result == BACKEND_MATPLOTLIB
 
     def test_fallback_other_direction(self):
         """Falls back to plotly when matplotlib is requested but missing."""
-        with (
-            mock.patch(
-                "datalab_kernel.plotter.matplotlib_available", return_value=False
-            ),
-            mock.patch("datalab_kernel.plotter.plotly_available", return_value=True),
-        ):
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.matplotlib_available", return_value=False
+                )
+            )
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.plotly_available", return_value=True
+                )
+            )
             with pytest.warns(UserWarning, match="not installed.*Falling back"):
                 result = resolve_backend("matplotlib")
             assert result == BACKEND_PLOTLY
 
     def test_both_missing_with_explicit_raises(self):
         """ImportError when explicit backend and fallback are both missing."""
-        with (
-            mock.patch("datalab_kernel.plotter.plotly_available", return_value=False),
-            mock.patch(
-                "datalab_kernel.plotter.matplotlib_available", return_value=False
-            ),
-            pytest.raises(ImportError, match="Neither plotly nor matplotlib"),
-        ):
-            resolve_backend("plotly")
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.plotly_available", return_value=False
+                )
+            )
+            stack.enter_context(
+                mock.patch(
+                    "datalab_kernel.plotter.matplotlib_available", return_value=False
+                )
+            )
+            with pytest.raises(ImportError, match="Neither plotly nor matplotlib"):
+                resolve_backend("plotly")
 
 
 # ============================================================================
