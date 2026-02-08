@@ -66,16 +66,6 @@ if TYPE_CHECKING:
 
     from datalab_kernel.workspace import DataObject, Workspace
 
-# ---------------------------------------------------------------------------
-# Plotly availability check
-# ---------------------------------------------------------------------------
-try:
-    import plotly  # noqa: F401
-
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-
 
 # ---------------------------------------------------------------------------
 # Constants

@@ -250,9 +250,9 @@ class TestPlotterFacade:
     """Verify the Plotter facade delegates to MatplotlibPlotter."""
 
     def test_delegate_type(self):
-        """Plotter._delegate is a MatplotlibPlotter."""
+        """Plotter._delegate is a MatplotlibPlotter when backend='matplotlib'."""
         ws = _make_workspace()
-        plotter = Plotter(ws)
+        plotter = Plotter(ws, backend="matplotlib")
         assert isinstance(plotter._delegate, MatplotlibPlotter)
 
     def test_plot_signal(self):
@@ -260,7 +260,7 @@ class TestPlotterFacade:
         ws = _make_workspace()
         sig = make_test_signal("sig")
         ws.add("sig", sig)
-        plotter = Plotter(ws)
+        plotter = Plotter(ws, backend="matplotlib")
         result = plotter.plot(sig)
         assert isinstance(result, MplPlotResult)
 
@@ -268,13 +268,13 @@ class TestPlotterFacade:
         """Plotter.plot('name') resolves from workspace."""
         ws = _make_workspace()
         ws.add("s", make_test_signal("s"))
-        plotter = Plotter(ws)
+        plotter = Plotter(ws, backend="matplotlib")
         result = plotter.plot("s")
         assert isinstance(result, MplPlotResult)
 
     def test_plot_missing_raises(self):
         """Plotter.plot('unknown') raises KeyError."""
-        plotter = Plotter(_make_workspace())
+        plotter = Plotter(_make_workspace(), backend="matplotlib")
         with pytest.raises(KeyError, match="not found"):
             plotter.plot("unknown")
 
@@ -282,7 +282,7 @@ class TestPlotterFacade:
         """Plotter.plot_signals returns MplMultiSignalResult."""
         ws = _make_workspace()
         sigs = [make_test_signal(f"s{i}") for i in range(3)]
-        plotter = Plotter(ws)
+        plotter = Plotter(ws, backend="matplotlib")
         result = plotter.plot_signals(sigs)
         assert isinstance(result, MplMultiSignalResult)
 
@@ -290,20 +290,20 @@ class TestPlotterFacade:
         """Plotter.plot_images returns MplMultiImageResult."""
         ws = _make_workspace()
         imgs = [make_test_image(f"i{i}", (64, 64)) for i in range(2)]
-        plotter = Plotter(ws)
+        plotter = Plotter(ws, backend="matplotlib")
         result = plotter.plot_images(imgs)
         assert isinstance(result, MplMultiImageResult)
 
     def test_display_table(self):
         """Plotter.display_table returns TableResultDisplay."""
-        plotter = Plotter(_make_workspace())
+        plotter = Plotter(_make_workspace(), backend="matplotlib")
         table = make_table_result_stats()
         result = plotter.display_table(table)
         assert isinstance(result, TableResultDisplay)
 
     def test_display_geometry(self):
         """Plotter.display_geometry returns GeometryResultDisplay."""
-        plotter = Plotter(_make_workspace())
+        plotter = Plotter(_make_workspace(), backend="matplotlib")
         geom = make_geometry_result_points()
         result = plotter.display_geometry(geom)
         assert isinstance(result, GeometryResultDisplay)

@@ -53,7 +53,7 @@ Simply run the cells to explore:
 
 - **Single, stable user API**
   - `workspace` for data access and persistence
-  - `plotter` for visualization
+  - `plotter` for visualization (Plotly interactive or Matplotlib static)
   - `sigima` for scientific processing
 
 - **Two execution modes, one notebook**
@@ -63,6 +63,11 @@ Simply run the cells to explore:
 - **Reproducibility by design**
   - Analyses can be saved and reloaded using `.h5` files
   - Notebooks run unchanged across environments
+
+- **Smart visualization backend**
+  - Plotly (interactive) preferred when installed, Matplotlib (static) fallback
+  - Switch backends at runtime with `plotter.set_backend("matplotlib")`
+  - Override via `DATALAB_PLOTTER_BACKEND` environment variable
 
 - **Performance-aware**
   - Optimized data handling when DataLab is attached
@@ -80,7 +85,7 @@ Simply run the cells to explore:
 img = workspace.get("i042")
 filtered = sigima.proc.image.butterworth(img, cut_off=0.2)
 workspace.add("filtered_i042", filtered)
-plotter.plot("filtered_i042")
+plotter.plot("filtered_i042")  # interactive Plotly figure (or static PNG)
 ```
 
 Depending on the execution context:
@@ -176,9 +181,10 @@ The kernel requires:
 - `sigima>=1.0` - Scientific signal and image processing
 - `numpy>=1.22`, `h5py>=3.0`, `matplotlib>=3.5`
 
-Optional dependency (via `[cli]` extra):
+Optional dependencies (via extras):
 
-- `jupyter-client>=7.0` - For `install`/`uninstall` CLI commands
+- `[plotly]` — `plotly>=5.0` for interactive plots (auto-used when installed)
+- `[cli]` — `jupyter-client>=7.0` for `install`/`uninstall` CLI commands
 
 ### With DataLab
 
@@ -193,6 +199,38 @@ mamba create -n datalab-kernel
 mamba activate datalab-kernel
 mamba install xeus-python datalab-kernel -c conda-forge
 python -m datalab_kernel install
+```
+
+---
+
+## Visualization Backends
+
+DataLab-Kernel supports two plotting backends:
+
+| Backend    | Output               | Install                          |
+| ---------- | -------------------- | -------------------------------- |
+| **Plotly** | Interactive HTML     | `pip install datalab-kernel[plotly]` |
+| **Matplotlib** | Static PNG       | Included by default              |
+
+When both are installed, **Plotly is used automatically** for its richer
+interactive experience. You can switch at any time:
+
+```python
+# Check current backend
+print(plotter.backend)  # "plotly" or "matplotlib"
+
+# Switch at runtime
+plotter.set_backend("matplotlib")
+plotter.plot("my_signal")  # static PNG
+
+plotter.set_backend("plotly")
+plotter.plot("my_signal")  # interactive figure
+```
+
+Or set the default before starting the kernel via an environment variable:
+
+```bash
+export DATALAB_PLOTTER_BACKEND=matplotlib
 ```
 
 ---

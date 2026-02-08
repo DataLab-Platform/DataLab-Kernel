@@ -35,7 +35,7 @@ class TestPlotterBasic:
         workspace = Workspace(backend=StandaloneBackend())
         signal = make_test_signal("my_signal")
         workspace.add("my_signal", signal)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot(signal)
 
@@ -46,7 +46,7 @@ class TestPlotterBasic:
         workspace = Workspace(backend=StandaloneBackend())
         image = make_test_image("my_image")
         workspace.add("my_image", image)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot(image)
 
@@ -56,7 +56,7 @@ class TestPlotterBasic:
         """plotter.plot('object_name') works."""
         workspace = Workspace(backend=StandaloneBackend())
         workspace.add("my_signal", make_test_signal("my_signal"))
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot("my_signal")
 
@@ -65,7 +65,7 @@ class TestPlotterBasic:
     def test_plotter_plot_missing_raises(self):
         """plotter.plot('unknown') raises KeyError."""
         workspace = Workspace(backend=StandaloneBackend())
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         with pytest.raises(KeyError, match="not found"):
             plotter.plot("unknown")
@@ -79,7 +79,7 @@ class TestPlotResultSignal:
         workspace = Workspace(backend=StandaloneBackend())
         signal = make_test_signal("my_signal")
         workspace.add("my_signal", signal)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot("my_signal")
         html = result._repr_html_()
@@ -93,7 +93,7 @@ class TestPlotResultSignal:
         workspace = Workspace(backend=StandaloneBackend())
         signal = make_test_signal("my_signal")
         workspace.add("my_signal", signal)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot("my_signal")
         png = result._repr_png_()
@@ -111,7 +111,7 @@ class TestPlotResultImage:
         workspace = Workspace(backend=StandaloneBackend())
         image = make_test_image("my_image")
         workspace.add("my_image", image)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot("my_image")
         html = result._repr_html_()
@@ -125,7 +125,7 @@ class TestPlotResultImage:
         workspace = Workspace(backend=StandaloneBackend())
         image = make_test_image("my_image")
         workspace.add("my_image", image)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot("my_image")
         png = result._repr_png_()
@@ -143,7 +143,7 @@ class TestPlotResultRepr:
         workspace = Workspace(backend=StandaloneBackend())
         signal = make_test_signal("my_signal")
         workspace.add("my_signal", signal)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot("my_signal")
         repr_str = repr(result)
@@ -156,7 +156,7 @@ class TestPlotResultRepr:
         workspace = Workspace(backend=StandaloneBackend())
         image = make_test_image("my_image")
         workspace.add("my_image", image)
-        plotter = Plotter(workspace)
+        plotter = Plotter(workspace, backend="matplotlib")
 
         result = plotter.plot("my_image")
         repr_str = repr(result)

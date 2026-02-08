@@ -14,7 +14,11 @@ by both the matplotlib and Plotly backends:
 - :mod:`datalab_kernel.matplotlib_backend` — static PNG rendering
 - :mod:`datalab_kernel.plotly_backend` — interactive HTML rendering
 
-The default :class:`Plotter` class delegates to the matplotlib backend.
+The :class:`Plotter` class auto-selects the best available backend:
+Plotly (interactive) if installed, otherwise matplotlib (static).
+Users can override the choice via :meth:`Plotter.set_backend` or the
+``DATALAB_PLOTTER_BACKEND`` environment variable.
+
 Shared helper functions for metadata extraction, coordinate computation,
 and style resolution live in this module so both backends can reuse them.
 """
@@ -22,12 +26,159 @@ and style resolution live in this module so both backends can reuse them.
 from __future__ import annotations
 
 import contextlib
+import logging
+import os
+import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
     from datalab_kernel.workspace import Workspace
+
+logger = logging.getLogger("datalab-kernel")
+
+# Valid backend names (lowercase)
+BACKEND_MATPLOTLIB = "matplotlib"
+BACKEND_PLOTLY = "plotly"
+_VALID_BACKENDS = {BACKEND_MATPLOTLIB, BACKEND_PLOTLY}
+
+# Environment variable for backend override
+BACKEND_ENV_VAR = "DATALAB_PLOTTER_BACKEND"
+
+
+def matplotlib_available() -> bool:
+    """Check whether matplotlib is importable."""
+    try:
+        # pylint: disable=import-outside-toplevel,unused-import
+        import matplotlib  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def plotly_available() -> bool:
+    """Check whether plotly is importable."""
+    try:
+        # pylint: disable=import-outside-toplevel,unused-import
+        import plotly  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+_NO_BACKEND_MSG = (
+    "Neither plotly nor matplotlib is installed. "
+    "Install at least one: pip install matplotlib  or  "
+    "pip install datalab-kernel[plotly]"
+)
+
+
+def resolve_backend(requested: str | None = None) -> str:
+    """Determine which plotting backend to use.
+
+    Resolution order:
+
+    1. *requested* argument (from :meth:`Plotter.set_backend` or constructor)
+    2. ``DATALAB_PLOTTER_BACKEND`` environment variable
+    3. Auto-detect: Plotly if available, else matplotlib
+
+    When the chosen backend is not installed the function falls back to the
+    other one and emits a :class:`UserWarning`.  If **neither** is installed
+    an :class:`ImportError` is raised.
+
+    Args:
+        requested: ``"plotly"`` or ``"matplotlib"``, case-insensitive.
+         *None* means auto-detect.
+
+    Returns:
+        Resolved backend name (``"plotly"`` or ``"matplotlib"``).
+
+    Raises:
+        ValueError: If *requested* is not a recognised backend name.
+        ImportError: If neither matplotlib nor plotly is installed.
+    """
+    # --- Step 1: determine the candidate ----------------------------------
+    if requested is not None:
+        candidate = requested.strip().lower()
+        if candidate not in _VALID_BACKENDS:
+            raise ValueError(
+                f"Unknown backend {requested!r}. Choose from {sorted(_VALID_BACKENDS)}."
+            )
+    else:
+        env = os.environ.get(BACKEND_ENV_VAR)
+        if env is not None:
+            candidate = env.strip().lower()
+            if candidate not in _VALID_BACKENDS:
+                warnings.warn(
+                    f"Ignoring invalid {BACKEND_ENV_VAR}={env!r}. "
+                    f"Choose from {sorted(_VALID_BACKENDS)}.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                candidate = None
+            else:
+                logger.debug("Backend from %s: %s", BACKEND_ENV_VAR, candidate)
+        else:
+            candidate = None
+
+    # --- Step 2: auto-detect if no explicit choice ------------------------
+    if candidate is None:
+        return _auto_detect_backend()
+
+    # --- Step 3: validate availability, fallback with warning -------------
+    avail = {
+        BACKEND_PLOTLY: plotly_available,
+        BACKEND_MATPLOTLIB: matplotlib_available,
+    }
+    if avail[candidate]():
+        return candidate
+
+    # Candidate unavailable — try the other
+    other = BACKEND_PLOTLY if candidate == BACKEND_MATPLOTLIB else BACKEND_MATPLOTLIB
+    if avail[other]():
+        warnings.warn(
+            f"Requested backend {candidate!r} is not installed. "
+            f"Falling back to {other!r}.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return other
+
+    raise ImportError(_NO_BACKEND_MSG)
+
+
+def _auto_detect_backend() -> str:
+    """Return the best available backend (Plotly preferred)."""
+    if plotly_available():
+        return BACKEND_PLOTLY
+    if matplotlib_available():
+        return BACKEND_MATPLOTLIB
+    raise ImportError(_NO_BACKEND_MSG)
+
+
+def _create_delegate(backend: str, workspace: Workspace):
+    """Instantiate the concrete plotter for *backend*.
+
+    Args:
+        backend: ``"plotly"`` or ``"matplotlib"``.
+        workspace: The workspace containing objects to plot.
+
+    Returns:
+        A ``PlotlyPlotter`` or ``MatplotlibPlotter`` instance.
+    """
+    # pylint: disable=import-outside-toplevel,redefined-outer-name
+    if backend == BACKEND_PLOTLY:
+        from datalab_kernel.plotly_backend import PlotlyPlotter
+
+        return PlotlyPlotter(workspace)
+
+    from datalab_kernel.matplotlib_backend import MatplotlibPlotter
+
+    return MatplotlibPlotter(workspace)
+
 
 # Style configuration constants
 MASK_OPACITY = 0.35  # Opacity for mask overlay
@@ -350,8 +501,10 @@ class Plotter:
     Jupyter notebooks, and optionally synchronize views with a running
     DataLab instance.
 
-    This is a thin facade that delegates to
-    :class:`~datalab_kernel.matplotlib_backend.MatplotlibPlotter`.
+    The backend is chosen automatically (Plotly if installed, otherwise
+    matplotlib) but can be overridden via the *backend* parameter, the
+    ``DATALAB_PLOTTER_BACKEND`` environment variable, or at runtime with
+    :meth:`set_backend`.
 
     Example::
 
@@ -361,24 +514,60 @@ class Plotter:
         plotter.plot_images([img1, img2])
         plotter.display_table(result)
         plotter.display_geometry(result)
+
+        # Switch backend at runtime
+        plotter.set_backend("matplotlib")
     """
 
-    def __init__(self, workspace: Workspace) -> None:
+    def __init__(self, workspace: Workspace, backend: str | None = None) -> None:
         """Initialize plotter with workspace reference.
 
         Args:
             workspace: The workspace containing objects to plot
+            backend: ``"plotly"`` or ``"matplotlib"``.  *None* (default)
+             auto-detects the best available backend (Plotly preferred).
         """
-        # Delayed import to avoid circular dependency
-        # pylint: disable=import-outside-toplevel
-        from datalab_kernel.matplotlib_backend import MatplotlibPlotter
+        self._workspace = workspace
+        resolved = resolve_backend(backend)
+        self._delegate = _create_delegate(resolved, workspace)
+        self._backend = resolved
+        logger.debug("Plotter initialised with %s backend", resolved)
 
-        self._delegate = MatplotlibPlotter(workspace)
+    # -- Backend selection API ------------------------------------------------
+
+    @property
+    def backend(self) -> str:
+        """Return the name of the active backend (``"plotly"`` or
+        ``"matplotlib"``)."""
+        return self._backend
+
+    def set_backend(self, backend: str) -> Plotter:
+        """Switch the plotting backend at runtime.
+
+        Args:
+            backend: ``"plotly"`` or ``"matplotlib"`` (case-insensitive).
+
+        Returns:
+            *self*, for call-chaining.
+
+        Raises:
+            ValueError: If *backend* is not recognised.
+            ImportError: If the requested backend is not installed and no
+             fallback is available.
+        """
+        resolved = resolve_backend(backend)
+        if resolved != self._backend:
+            self._delegate = _create_delegate(resolved, self._workspace)
+            self._backend = resolved
+            logger.debug("Plotter switched to %s backend", resolved)
+        return self
+
+    # -- Delegated plotting methods ------------------------------------------
 
     def plot(self, obj_or_name, title=None, show_roi=True, show_results=True, **kwargs):
         """Plot an object or retrieve and plot by name.
 
-        See :meth:`MatplotlibPlotter.plot` for full documentation.
+        See the active backend's ``plot`` method for full documentation.
         """
         return self._delegate.plot(
             obj_or_name,
@@ -402,7 +591,8 @@ class Plotter:
     ):
         """Plot multiple signals on a single plot.
 
-        See :meth:`MatplotlibPlotter.plot_signals` for full documentation.
+        See the active backend's ``plot_signals`` method for full
+        documentation.
         """
         return self._delegate.plot_signals(
             objs_or_names,
@@ -434,7 +624,8 @@ class Plotter:
     ):
         """Plot multiple images in a grid layout.
 
-        See :meth:`MatplotlibPlotter.plot_images` for full documentation.
+        See the active backend's ``plot_images`` method for full
+        documentation.
         """
         return self._delegate.plot_images(
             objs_or_names,
@@ -457,7 +648,8 @@ class Plotter:
     ):
         """Display a TableResult with rich HTML rendering.
 
-        See :meth:`MatplotlibPlotter.display_table` for full documentation.
+        See the active backend's ``display_table`` method for full
+        documentation.
         """
         return self._delegate.display_table(
             result,
@@ -469,7 +661,8 @@ class Plotter:
     def display_geometry(self, result, title=None):
         """Display a GeometryResult with rich HTML rendering.
 
-        See :meth:`MatplotlibPlotter.display_geometry` for full documentation.
+        See the active backend's ``display_geometry`` method for full
+        documentation.
         """
         return self._delegate.display_geometry(result, title=title)
 
@@ -743,24 +936,34 @@ class GeometryResultDisplay:
 # code was extracted to :mod:`datalab_kernel.matplotlib_backend`.
 
 # pylint: disable=wrong-import-position
-from datalab_kernel.matplotlib_backend import (  # noqa: E402
-    MatplotlibPlotter,
-)
-from datalab_kernel.matplotlib_backend import (  # noqa: E402
-    MplMultiImageResult as MultiImagePlotResult,
-)
-from datalab_kernel.matplotlib_backend import (  # noqa: E402
-    MplMultiSignalResult as MultiSignalPlotResult,
-)
-from datalab_kernel.matplotlib_backend import (  # noqa: E402
-    MplPlotResult as PlotResult,
-)
+try:
+    from datalab_kernel.matplotlib_backend import (  # noqa: E402
+        MatplotlibPlotter,
+    )
+    from datalab_kernel.matplotlib_backend import (  # noqa: E402
+        MplMultiImageResult as MultiImagePlotResult,
+    )
+    from datalab_kernel.matplotlib_backend import (  # noqa: E402
+        MplMultiSignalResult as MultiSignalPlotResult,
+    )
+    from datalab_kernel.matplotlib_backend import (  # noqa: E402
+        MplPlotResult as PlotResult,
+    )
+except ImportError:  # pragma: no cover — matplotlib is normally required
+    pass
 
 __all__ = [
     # Public API
     "Plotter",
     "TableResultDisplay",
     "GeometryResultDisplay",
+    # Backend selection
+    "BACKEND_MATPLOTLIB",
+    "BACKEND_PLOTLY",
+    "BACKEND_ENV_VAR",
+    "matplotlib_available",
+    "plotly_available",
+    "resolve_backend",
     # Backward-compat re-exports
     "PlotResult",
     "MultiSignalPlotResult",

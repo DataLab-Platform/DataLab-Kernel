@@ -79,6 +79,9 @@ For manual connection (e.g., remote DataLab):
    * - ``DATALAB_KERNEL_MODE``
      - Force mode: ``auto``, ``live``, ``standalone``
      - ``auto``
+   * - ``DATALAB_PLOTTER_BACKEND``
+     - Plotting backend: ``plotly``, ``matplotlib``
+     - Auto (Plotly preferred)
 
 
 Unified Workspace API
@@ -160,17 +163,37 @@ Access DataLab's extensive processing library:
 Interactive Visualization
 -------------------------
 
-Built-in matplotlib-based plotting:
+DataLab-Kernel supports two plotting backends, chosen automatically:
+
+- **Plotly** — interactive HTML figures (preferred when installed)
+- **Matplotlib** — static PNG images (always available)
+
+Install Plotly support with:
+
+.. code-block:: console
+
+    $ pip install datalab-kernel[plotly]
+
+Usage:
 
 .. code-block:: python
 
     plotter = Plotter(workspace)
 
-    # Signal plotting
+    # Signal plotting (uses the best available backend)
     plotter.plot("signal_name")
 
-    # Image plotting with options
+    # Image plotting
     plotter.plot("image_name", cmap="viridis", colorbar=True)
+
+    # Check which backend is active
+    print(plotter.backend)  # "plotly" or "matplotlib"
+
+    # Switch backend at runtime
+    plotter.set_backend("matplotlib")
+
+You can also set the backend via the ``DATALAB_PLOTTER_BACKEND`` environment
+variable (``plotly`` or ``matplotlib``).
 
 
 Sigima Integration

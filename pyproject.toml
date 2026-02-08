@@ -54,6 +54,9 @@ doc = [
     "sphinx-design>=0.5",
     "sphinx-copybutton>=0.5",
 ]
+plotly = [
+    "plotly>=5.0",
+]
 datalab = [
     "datalab-platform>=1.1",
 ]
