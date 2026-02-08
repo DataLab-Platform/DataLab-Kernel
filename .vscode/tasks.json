@@ -307,7 +307,9 @@
             "type": "shell",
             "command": "${command:python.interpreterPath}",
             "args": [
-                "scripts/serve_dev_wheels.py"
+                "scripts/serve_dev_wheels.py",
+                "--packages",
+                "${input:devWheelPackages}"
             ],
             "options": {
                 "cwd": "${workspaceFolder}",
@@ -333,7 +335,9 @@
             "command": "${command:python.interpreterPath}",
             "args": [
                 "scripts/serve_dev_wheels.py",
-                "--build-only"
+                "--build-only",
+                "--packages",
+                "${input:devWheelPackages}"
             ],
             "options": {
                 "cwd": "${workspaceFolder}",
@@ -352,5 +356,74 @@
             },
             "problemMatcher": [],
         },
+        {
+            "label": "👁️ Interactive Plot Tests",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": [
+                "scripts/run_with_env.py",
+                "${workspaceFolder}/.venv/Scripts/python.exe",
+                "-m",
+                "pytest",
+                "datalab_kernel/tests/unit/test_${input:plotBackend}_backend.py",
+                "--gui",
+                "-v",
+                "-s"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "group": "test"
+        },
     ],
+    "inputs": [
+        {
+            "id": "plotBackend",
+            "type": "pickString",
+            "description": "Which plotting backend to test interactively?",
+            "options": [
+                {
+                    "label": "Matplotlib (static PNG windows)",
+                    "value": "matplotlib"
+                },
+                {
+                    "label": "Plotly (interactive HTML in browser)",
+                    "value": "plotly"
+                }
+            ],
+            "default": "matplotlib"
+        },
+        {
+            "id": "devWheelPackages",
+            "type": "pickString",
+            "description": "Which packages to build?",
+            "options": [
+                {
+                    "label": "All packages (guidata + sigima + kernel)",
+                    "value": "all"
+                },
+                {
+                    "label": "DataLab-Kernel only",
+                    "value": "kernel"
+                },
+                {
+                    "label": "Sigima only",
+                    "value": "sigima"
+                },
+                {
+                    "label": "guidata only",
+                    "value": "guidata"
+                },
+                {
+                    "label": "Sigima + Kernel",
+                    "value": "sigima,kernel"
+                },
+                {
+                    "label": "guidata + Sigima",
+                    "value": "guidata,sigima"
+                }
+            ],
+            "default": "all"
+        }
+    ]
 }

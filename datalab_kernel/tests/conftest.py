@@ -26,6 +26,10 @@ def pytest_configure(config):
         "markers", "integration: integration tests with external services"
     )
     config.addinivalue_line("markers", "webapi: tests requiring WebAPI backend")
+    config.addinivalue_line(
+        "markers",
+        "gui: tests with optional interactive visualization (run with --gui)",
+    )
 
 
 def pytest_addoption(parser):
@@ -56,6 +60,13 @@ def pytest_addoption(parser):
         default=False,
         help="Run WebAPI integration tests (starts WebAPI server in DataLab). "
         "Requires DataLab to be running.",
+    )
+    parser.addoption(
+        "--gui",
+        action="store_true",
+        default=False,
+        help="Enable interactive visualization in plotter tests. "
+        "When set, tests marked @pytest.mark.gui will open plot windows.",
     )
 
 
@@ -442,3 +453,20 @@ def webapi_backend(request, auto_datalab):  # pylint: disable=W0621,W0613
     # Cleanup after test
     with contextlib.suppress(Exception):
         backend.clear()
+
+
+@pytest.fixture
+def gui_mode(request):
+    """Return True when ``--gui`` is passed on the command line.
+
+    Use this fixture in plotter tests to conditionally show interactive
+    plot windows:
+
+    .. code-block:: python
+
+        def test_my_plot(gui_mode):
+            result = plotter.plot(signal)
+            if gui_mode:
+                show_result(result)  # Opens matplotlib/plotly viewer
+    """
+    return request.config.getoption("--gui")
