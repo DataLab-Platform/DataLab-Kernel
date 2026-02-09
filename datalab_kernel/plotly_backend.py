@@ -888,7 +888,7 @@ class PlotlyPlotResult:
             "xaxis_title": xlabel_str,
             "yaxis_title": ylabel_str,
             "template": "plotly_white",
-            "showlegend": True,
+            "showlegend": False,
         }
 
         # Log scale
@@ -1020,6 +1020,7 @@ class PlotlyPlotResult:
             "xaxis_title": xlabel_str,
             "yaxis_title": ylabel_str,
             "template": "plotly_white",
+            "showlegend": False,
             "yaxis_autorange": "reversed",  # Top-left origin like DataLab
             "yaxis_scaleanchor": "x",  # Equal aspect ratio
             "yaxis_constrain": "domain",
@@ -1354,6 +1355,13 @@ class PlotlyMultiSignalResult:
             yaxis_title=ylabel_str,
             template="plotly_white",
             showlegend=True,
+            legend={
+                "orientation": "h",
+                "yanchor": "bottom",
+                "y": 1.02,
+                "xanchor": "left",
+                "x": 0,
+            },
         )
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor="rgba(0,0,0,0.1)")
         fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="rgba(0,0,0,0.1)")
