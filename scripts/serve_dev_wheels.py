@@ -42,11 +42,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Default paths - adjust if your workspace layout differs
-DEFAULT_GUIDATA_PATH = Path("C:/Dev/guidata")
-DEFAULT_SIGIMA_PATH = Path("C:/Dev/Sigima")
-DEFAULT_KERNEL_PATH = Path("C:/Dev/DataLab-Kernel")
-DEFAULT_WHEELS_DIR = Path("C:/Dev/wheels")
+# Default paths relative to this script's location (DataLab-Kernel/scripts/)
+# Assumes sibling packages are at the same directory level as DataLab-Kernel
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+_KERNEL_ROOT = _SCRIPTS_DIR.parent
+_PACKAGES_ROOT = _KERNEL_ROOT.parent
+
+DEFAULT_GUIDATA_PATH = _PACKAGES_ROOT / "guidata"
+DEFAULT_SIGIMA_PATH = _PACKAGES_ROOT / "Sigima"
+DEFAULT_KERNEL_PATH = _KERNEL_ROOT
+DEFAULT_WHEELS_DIR = _KERNEL_ROOT / "build" / "wheels"
 DEFAULT_PORT = 8888
 
 # Known package names for --packages selection
