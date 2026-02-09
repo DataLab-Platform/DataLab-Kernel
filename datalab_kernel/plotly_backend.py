@@ -888,14 +888,18 @@ class PlotlyPlotResult:
             getattr(obj, "ylabel", None), getattr(obj, "yunit", None)
         )
 
+        # Allow user override via kwargs
+        fig_w = self._kwargs.get("width", _SIGNAL_DEFAULT_WIDTH)
+        fig_h = self._kwargs.get("height", _SIGNAL_DEFAULT_HEIGHT)
+
         layout_kw: dict = {
             "title": title,
             "xaxis_title": xlabel_str,
             "yaxis_title": ylabel_str,
             "template": "plotly_white",
             "showlegend": False,
-            "width": _SIGNAL_DEFAULT_WIDTH,
-            "height": _SIGNAL_DEFAULT_HEIGHT,
+            "width": fig_w,
+            "height": fig_h,
         }
 
         # Log scale
@@ -1356,6 +1360,10 @@ class PlotlyMultiSignalResult:
         xlabel_str = _format_axis_title(x_label, x_unit)
         ylabel_str = _format_axis_title(y_label, y_unit)
 
+        # Allow user override via kwargs
+        fig_w = self._kwargs.get("width", _SIGNAL_DEFAULT_WIDTH)
+        fig_h = self._kwargs.get("height", _SIGNAL_DEFAULT_HEIGHT)
+
         fig.update_layout(
             title=self._title or "Signals",
             xaxis_title=xlabel_str,
@@ -1369,8 +1377,8 @@ class PlotlyMultiSignalResult:
                 "xanchor": "left",
                 "x": 0,
             },
-            width=_SIGNAL_DEFAULT_WIDTH,
-            height=_SIGNAL_DEFAULT_HEIGHT,
+            width=fig_w,
+            height=fig_h,
         )
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor="rgba(0,0,0,0.1)")
         fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="rgba(0,0,0,0.1)")
