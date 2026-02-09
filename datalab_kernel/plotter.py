@@ -183,6 +183,11 @@ def _create_delegate(backend: str, workspace: Workspace):
 # Style configuration constants
 MASK_OPACITY = 0.35  # Opacity for mask overlay
 
+#: Default plot width in pixels for figure output.
+#: Matches matplotlib's default figure width (6.4 in × 100 DPI) and fits
+#: comfortably in standard Jupyter layouts (~960 px classic, ~700–900 px Lab).
+DEFAULT_PLOT_WIDTH = 640
+
 # Metadata prefix for geometry results (consistent with DataLab's GeometryAdapter)
 GEOMETRY_META_PREFIX = "Geometry_"
 # Metadata prefix for table results (consistent with DataLab's TableAdapter)
@@ -980,6 +985,7 @@ __all__ = [
     "MultiImagePlotResult",
     "MatplotlibPlotter",
     # Shared helpers (for backend use)
+    "DEFAULT_PLOT_WIDTH",
     "MASK_OPACITY",
     "GEOMETRY_META_PREFIX",
     "TABLE_META_PREFIX",

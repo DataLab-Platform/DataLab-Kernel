@@ -45,6 +45,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from datalab_kernel.plotter import (
+    DEFAULT_PLOT_WIDTH,
     MASK_OPACITY,
     GeometryResultDisplay,
     TableResultDisplay,
@@ -407,7 +408,8 @@ class MplPlotResult:
         # Figure size: honour user height override (pixels → inches at 100 dpi)
         _dpi = 100
         _h_in = self._kwargs.get("height", 500) / _dpi
-        fig, ax = plt.subplots(figsize=(8, _h_in))
+        _w_in = DEFAULT_PLOT_WIDTH / _dpi
+        fig, ax = plt.subplots(figsize=(_w_in, _h_in))
 
         if obj_type == "SignalObj":
             self._render_signal(ax)
@@ -703,7 +705,7 @@ class MplMultiSignalResult:
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(DEFAULT_PLOT_WIDTH / 100, 6))
 
         if self._title:
             fig.suptitle(self._title)

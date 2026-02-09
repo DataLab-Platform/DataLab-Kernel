@@ -51,6 +51,7 @@ import numpy as np
 
 # Reuse display classes and helper functions from the matplotlib plotter
 from datalab_kernel.plotter import (
+    DEFAULT_PLOT_WIDTH,
     MASK_OPACITY,
     GeometryResultDisplay,
     TableResultDisplay,
@@ -567,7 +568,7 @@ def _get_image_coords(obj) -> tuple[np.ndarray, np.ndarray]:
 
 
 #: Default plot width in pixels for single-image figures.
-_IMAGE_BASE_WIDTH = 700
+_IMAGE_BASE_WIDTH = DEFAULT_PLOT_WIDTH
 
 #: Extra height in pixels for title, axis labels, and margins.
 _IMAGE_HEIGHT_PADDING = 80
