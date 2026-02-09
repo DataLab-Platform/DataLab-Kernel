@@ -416,9 +416,10 @@ class MplPlotResult:
 
         ax.set_title(title)
         ax.grid(True, alpha=0.3)
+        fig.tight_layout()
 
         buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+        fig.savefig(buf, format="png", dpi=100, pil_kwargs={"compress_level": 1})
         plt.close(fig)
         buf.seek(0)
         return buf.read()
@@ -557,14 +558,20 @@ class MplPlotResult:
                 extent=extent,
                 vmin=vmin,
                 vmax=vmax,
+                interpolation="nearest",
             )
 
             # Overlay mask if present
             if hasattr(obj, "maskdata") and obj.maskdata is not None:
                 mask = obj.maskdata
-                mask_rgba = np.zeros((*mask.shape, 4))
+                mask_rgba = np.zeros((*mask.shape, 4), dtype=np.float32)
                 mask_rgba[mask, :] = [1, 0, 0, MASK_OPACITY]
-                ax.imshow(mask_rgba, origin="upper", extent=extent)
+                ax.imshow(
+                    mask_rgba,
+                    origin="upper",
+                    extent=extent,
+                    interpolation="nearest",
+                )
 
         # Colorbar with label
         zlabel = getattr(obj, "zlabel", None) or ""
@@ -827,7 +834,7 @@ class MplMultiSignalResult:
         plt.tight_layout()
 
         buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+        fig.savefig(buf, format="png", dpi=100, pil_kwargs={"compress_level": 1})
         plt.close(fig)
         buf.seek(0)
         return buf.read()
@@ -1053,6 +1060,7 @@ class MplMultiImageResult:
                     extent=extent,
                     vmin=vmin,
                     vmax=vmax,
+                    interpolation="nearest",
                 )
 
             ax.set_title(img_title)
@@ -1065,9 +1073,14 @@ class MplMultiImageResult:
                 and img.maskdata is not None
             ):
                 mask = img.maskdata
-                mask_rgba = np.zeros((*mask.shape, 4))
+                mask_rgba = np.zeros((*mask.shape, 4), dtype=np.float32)
                 mask_rgba[mask, :] = [1, 0, 0, MASK_OPACITY]
-                ax.imshow(mask_rgba, origin="upper", extent=extent)
+                ax.imshow(
+                    mask_rgba,
+                    origin="upper",
+                    extent=extent,
+                    interpolation="nearest",
+                )
 
             # Add colorbar
             cbar = plt.colorbar(im, ax=ax)
@@ -1119,7 +1132,7 @@ class MplMultiImageResult:
         plt.tight_layout()
 
         buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+        fig.savefig(buf, format="png", dpi=100, pil_kwargs={"compress_level": 1})
         plt.close(fig)
         buf.seek(0)
         return buf.read()

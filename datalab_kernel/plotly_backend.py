@@ -42,7 +42,9 @@ Usage::
 from __future__ import annotations
 
 import contextlib
+import json
 import math
+import uuid
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -632,15 +634,42 @@ def _figure_to_mimebundle(fig: go.Figure) -> dict:
 
     A ``text/html`` fallback is included for classic Jupyter Notebook.
 
+    The JSON dict is generated once via ``to_plotly_json()`` and reused to
+    build the HTML fallback, avoiding a costly second serialisation pass
+    over large numpy arrays.
+
     Args:
         fig: Plotly Figure object
 
     Returns:
         MIME bundle dictionary
     """
+    # Single-pass: convert numpy arrays to Python types once
+    json_dict = fig.to_plotly_json()
+
+    # Build lightweight HTML from the already-converted dict instead of
+    # calling fig.to_html() which would re-traverse all numpy arrays.
+    div_id = uuid.uuid4().hex
+    data_str = json.dumps(json_dict.get("data", []), allow_nan=True)
+    layout_str = json.dumps(json_dict.get("layout", {}), allow_nan=True)
+    config = json_dict.get("config", {})
+    config.setdefault("responsive", True)
+    config_str = json.dumps(config)
+
+    html = (
+        "<div>"
+        '<script src="https://cdn.plot.ly/plotly-latest.min.js"'
+        ' charset="utf-8"></script>'
+        f'<div id="{div_id}" class="plotly-graph-div"'
+        ' style="height:100%; width:100%;"></div>'
+        '<script type="text/javascript">'
+        f"Plotly.newPlot('{div_id}', {data_str}, {layout_str}, {config_str});"
+        "</script></div>"
+    )
+
     bundle: dict = {
-        "application/vnd.plotly.v1+json": fig.to_plotly_json(),
-        "text/html": fig.to_html(include_plotlyjs="cdn", full_html=False),
+        "application/vnd.plotly.v1+json": json_dict,
+        "text/html": html,
     }
     return bundle
 
