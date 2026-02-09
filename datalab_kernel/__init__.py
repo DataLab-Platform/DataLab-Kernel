@@ -30,7 +30,7 @@ Example usage::
 
 from __future__ import annotations
 
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 __author__ = "DataLab Platform Developers"
 
 from datalab_kernel.plotter import Plotter
