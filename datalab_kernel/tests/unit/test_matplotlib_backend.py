@@ -32,8 +32,6 @@ from datalab_kernel.matplotlib_backend import (
 )
 from datalab_kernel.plotter import (
     GeometryResultDisplay,
-    MultiImagePlotResult,
-    MultiSignalPlotResult,
     PlotResult,
     Plotter,
     TableResultDisplay,
@@ -232,14 +230,6 @@ class TestBackwardCompat:
         """``PlotResult`` re-export is identical to ``MplPlotResult``."""
         assert PlotResult is MplPlotResult
 
-    def test_multi_signal_alias(self):
-        """``MultiSignalPlotResult`` is ``MplMultiSignalResult``."""
-        assert MultiSignalPlotResult is MplMultiSignalResult
-
-    def test_multi_image_alias(self):
-        """``MultiImagePlotResult`` is ``MplMultiImageResult``."""
-        assert MultiImagePlotResult is MplMultiImageResult
-
 
 # ============================================================================
 # Plotter facade
@@ -278,21 +268,29 @@ class TestPlotterFacade:
         with pytest.raises(KeyError, match="not found"):
             plotter.plot("unknown")
 
-    def test_plot_signals(self):
-        """Plotter.plot_signals returns MplMultiSignalResult."""
+    def test_plot_signal_list(self):
+        """Plotter.plot([signals]) returns MplMultiSignalResult."""
         ws = _make_workspace()
         sigs = [make_test_signal(f"s{i}") for i in range(3)]
         plotter = Plotter(ws, backend="matplotlib")
-        result = plotter.plot_signals(sigs)
+        result = plotter.plot(sigs)
         assert isinstance(result, MplMultiSignalResult)
 
-    def test_plot_images(self):
-        """Plotter.plot_images returns MplMultiImageResult."""
+    def test_plot_image_list(self):
+        """Plotter.plot([images]) returns MplMultiImageResult."""
         ws = _make_workspace()
         imgs = [make_test_image(f"i{i}", (64, 64)) for i in range(2)]
         plotter = Plotter(ws, backend="matplotlib")
-        result = plotter.plot_images(imgs)
+        result = plotter.plot(imgs)
         assert isinstance(result, MplMultiImageResult)
+
+    def test_plot_single_item_list_unwraps(self):
+        """Plotter.plot([single_signal]) returns MplPlotResult (unwrapped)."""
+        ws = _make_workspace()
+        sig = make_test_signal("s0")
+        plotter = Plotter(ws, backend="matplotlib")
+        result = plotter.plot([sig])
+        assert isinstance(result, MplPlotResult)
 
     def test_display_table(self):
         """Plotter.display_table returns TableResultDisplay."""

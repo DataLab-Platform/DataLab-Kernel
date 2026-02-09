@@ -189,6 +189,12 @@ Usage:
     # Override the auto-computed figure height (pixels)
     plotter.plot("image_name", height=600)
 
+    # Multiple signals (overlay on shared axes)
+    plotter.plot([sig1, sig2, sig3])
+
+    # Multiple images (subplot grid)
+    plotter.plot([img1, img2], titles=["Before", "After"])
+
     # Check which backend is active
     print(plotter.backend)  # "plotly" or "matplotlib"
 

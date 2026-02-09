@@ -99,3 +99,44 @@ Images are displayed as 2D colormaps:
 
     # Override the auto-computed figure height (pixels)
     plotter.plot("my_image", height=600)
+
+Multi-Object Plotting
+---------------------
+
+Pass a **list** to ``plot()`` to display multiple objects at once.
+The plotter auto-detects whether items are signals or images:
+
+**Multiple signals** — overlaid on shared axes with automatic legend and
+color cycling:
+
+.. code-block:: python
+
+    plotter.plot([sig1, sig2, sig3])
+
+    # With explicit axis labels and units
+    plotter.plot(
+        [sig1, sig2],
+        title="Comparison",
+        xlabel="Frequency", ylabel="Magnitude",
+        xunit="Hz", yunit="dB",
+    )
+
+    # Raw numpy arrays and (x, y) tuples are also supported
+    import numpy as np
+    plotter.plot([np.sin(np.linspace(0, 10, 200)), (x_array, y_array)])
+
+**Multiple images** — displayed in a subplot grid (up to 4 columns):
+
+.. code-block:: python
+
+    plotter.plot([img1, img2, img3])
+
+    # With per-image titles and a shared colormap
+    plotter.plot(
+        [img1, img2],
+        titles=["Before", "After"],
+        colormap="hot",
+    )
+
+**Mixed lists** of signals and images raise a ``TypeError``.
+A single-item list behaves identically to passing the object directly.

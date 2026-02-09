@@ -33,8 +33,8 @@ Usage::
 
     plotter = PlotlyPlotter(workspace)
     plotter.plot("s001")                    # Single signal
-    plotter.plot_signals([sig1, sig2])       # Multiple signals
-    plotter.plot_images([img1, img2])        # Multiple images
+    plotter.plot([sig1, sig2])               # Multiple signals
+    plotter.plot([img1, img2])               # Multiple images
     plotter.display_table(table_result)      # HTML table
     plotter.display_geometry(geom_result)    # HTML table
 """
@@ -1791,8 +1791,8 @@ class PlotlyPlotter:
         plotter = PlotlyPlotter(workspace)
 
         plotter.plot("s001")                    # Single signal
-        plotter.plot_signals([sig1, sig2])       # Multiple signals
-        plotter.plot_images([img1, img2])        # Multiple images
+        plotter.plot([sig1, sig2])               # Multiple signals
+        plotter.plot([img1, img2])               # Multiple images
         plotter.display_table(table_result)      # HTML table
         plotter.display_geometry(geom_result)    # HTML table
     """
@@ -1807,27 +1807,107 @@ class PlotlyPlotter:
 
     def plot(
         self,
-        obj_or_name: DataObject | str,
+        obj_or_name: DataObject | str | list,
         title: str | None = None,
         show_roi: bool = True,
         show_results: bool = True,
+        *,
+        xlabel: str | None = None,
+        ylabel: str | None = None,
+        xunit: str | None = None,
+        yunit: str | None = None,
+        zlabel: str | None = None,
+        zunit: str | None = None,
+        titles: list[str] | None = None,
+        results: list | None = None,
         **kwargs,
-    ) -> PlotlyPlotResult:
-        """Plot an object or retrieve and plot by name.
+    ) -> PlotlyPlotResult | PlotlyMultiSignalResult | PlotlyMultiImageResult:
+        """Plot one or more objects.
+
+        Accepts a single object (or workspace name) **or** a list.
+
+        * **Single object** — renders one signal or image.
+        * **List of signals** — overlays all curves on shared axes.
+        * **List of images** — displays in a subplot grid.
+        * **Mixed list** — raises :class:`TypeError`.
+
+        A single-item list is unwrapped and treated as a single object.
 
         Args:
-            obj_or_name: Object to plot, or name of object in workspace
-            title: Optional plot title override
-            show_roi: Whether to show ROIs defined in the object
-            show_results: Whether to show geometry/table results from metadata
-            **kwargs: Additional plotting options
+            obj_or_name: Object to plot, workspace name, or a *list* of
+             objects / names.
+            title: Plot title (overall figure title for multi-plots).
+            show_roi: Whether to show ROIs defined in the objects.
+            show_results: Whether to show geometry/table results from metadata.
+            xlabel: X-axis label override (multi-plots).
+            ylabel: Y-axis label override (multi-plots).
+            xunit: X-axis unit override (multi-plots).
+            yunit: Y-axis unit override (multi-plots).
+            zlabel: Colorbar label override (images only).
+            zunit: Colorbar unit override (images only).
+            titles: Per-image title list (images only).
+            results: List of ``GeometryResult`` objects to overlay (images only).
+            **kwargs: Additional plotting options (``height``, ``colormap``,
+             ``width``).
 
         Returns:
-            PlotlyPlotResult with display capabilities
+            A result object with Jupyter display capabilities.
 
         Raises:
-            KeyError: If name not found in workspace
+            TypeError: If a list mixes signals and images.
+            KeyError: If a workspace name is not found.
         """
+        from datalab_kernel.plotter import (  # pylint: disable=import-outside-toplevel
+            _IMAGE,
+            _resolve_and_classify,
+        )
+
+        # --- list input: multi-object dispatch ---
+        if isinstance(obj_or_name, list):
+            # Single-item list → unwrap to single-object path
+            if len(obj_or_name) == 1:
+                item = obj_or_name[0]
+                if isinstance(item, str):
+                    item = self._workspace.get(item)
+                return PlotlyPlotResult(
+                    item,
+                    title=title,
+                    show_roi=show_roi,
+                    show_results=show_results,
+                    results=results,
+                    **kwargs,
+                )
+
+            objs, category = _resolve_and_classify(obj_or_name, self._workspace)
+            if category == _IMAGE:
+                return PlotlyMultiImageResult(
+                    objs,
+                    title=title,
+                    titles=titles,
+                    xlabel=xlabel,
+                    ylabel=ylabel,
+                    zlabel=zlabel,
+                    xunit=xunit,
+                    yunit=yunit,
+                    zunit=zunit,
+                    show_roi=show_roi,
+                    show_results=show_results,
+                    results=results,
+                    **kwargs,
+                )
+            return PlotlyMultiSignalResult(
+                objs,
+                title=title,
+                xlabel=xlabel,
+                ylabel=ylabel,
+                xunit=xunit,
+                yunit=yunit,
+                show_roi=show_roi,
+                show_results=show_results,
+                **kwargs,
+            )
+
+        # --- scalar input: single-object path ---
         if isinstance(obj_or_name, str):
             obj = self._workspace.get(obj_or_name)
             if title is None:
@@ -1838,112 +1918,8 @@ class PlotlyPlotter:
                 title = obj.title
 
         return PlotlyPlotResult(
-            obj, title=title, show_roi=show_roi, show_results=show_results, **kwargs
-        )
-
-    def plot_signals(
-        self,
-        objs_or_names: list[DataObject | str | np.ndarray | tuple[np.ndarray, ...]],
-        title: str | None = None,
-        xlabel: str | None = None,
-        ylabel: str | None = None,
-        xunit: str | None = None,
-        yunit: str | None = None,
-        show_roi: bool = True,
-        show_results: bool = True,
-        **kwargs,
-    ) -> PlotlyMultiSignalResult:
-        """Plot multiple signals on a single interactive plot.
-
-        Args:
-            objs_or_names: List of signals to plot. Can be SignalObj, workspace
-             names, numpy arrays (y data), or tuples of (x, y) arrays
-            title: Optional plot title
-            xlabel: Label for the x-axis
-            ylabel: Label for the y-axis
-            xunit: Unit for the x-axis
-            yunit: Unit for the y-axis
-            show_roi: Whether to show ROIs defined in SignalObj instances
-            show_results: Whether to show geometry/table results from metadata
-            **kwargs: Additional plotting options
-
-        Returns:
-            PlotlyMultiSignalResult with display capabilities
-        """
-        objs = []
-        for obj_or_name in objs_or_names:
-            if isinstance(obj_or_name, str):
-                objs.append(self._workspace.get(obj_or_name))
-            else:
-                objs.append(obj_or_name)
-
-        return PlotlyMultiSignalResult(
-            objs,
+            obj,
             title=title,
-            xlabel=xlabel,
-            ylabel=ylabel,
-            xunit=xunit,
-            yunit=yunit,
-            show_roi=show_roi,
-            show_results=show_results,
-            **kwargs,
-        )
-
-    def plot_images(
-        self,
-        objs_or_names: list[DataObject | str | np.ndarray],
-        title: str | None = None,
-        titles: list[str] | None = None,
-        xlabel: str | None = None,
-        ylabel: str | None = None,
-        zlabel: str | None = None,
-        xunit: str | None = None,
-        yunit: str | None = None,
-        zunit: str | None = None,
-        show_roi: bool = True,
-        show_results: bool = True,
-        results: list | None = None,
-        **kwargs,
-    ) -> PlotlyMultiImageResult:
-        """Plot multiple images in a grid layout.
-
-        Args:
-            objs_or_names: List of images to plot. Can be ImageObj, workspace
-             names, or numpy arrays
-            title: Optional overall figure title
-            titles: Optional list of titles for each image
-            xlabel: Label for the x-axis
-            ylabel: Label for the y-axis
-            zlabel: Label for the colorbar (z-axis)
-            xunit: Unit for the x-axis
-            yunit: Unit for the y-axis
-            zunit: Unit for the colorbar
-            show_roi: Whether to show ROIs defined in ImageObj instances
-            show_results: Whether to show geometry/table results from metadata
-            results: Optional list of GeometryResult objects to overlay
-            **kwargs: Additional plotting options (e.g., ``colormap``,
-             ``height`` to override auto-computed figure height in pixels)
-
-        Returns:
-            PlotlyMultiImageResult with display capabilities
-        """
-        objs = []
-        for obj_or_name in objs_or_names:
-            if isinstance(obj_or_name, str):
-                objs.append(self._workspace.get(obj_or_name))
-            else:
-                objs.append(obj_or_name)
-
-        return PlotlyMultiImageResult(
-            objs,
-            title=title,
-            titles=titles,
-            xlabel=xlabel,
-            ylabel=ylabel,
-            zlabel=zlabel,
-            xunit=xunit,
-            yunit=yunit,
-            zunit=zunit,
             show_roi=show_roi,
             show_results=show_results,
             results=results,

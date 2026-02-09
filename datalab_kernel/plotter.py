@@ -494,8 +494,89 @@ def _get_image_lut_range(obj) -> tuple[float | None, float | None]:
     return vmin, vmax
 
 
+# -- Object classification --------------------------------------------------
+
+#: Category name for signal-like objects.
+_SIGNAL = "signal"
+#: Category name for image-like objects.
+_IMAGE = "image"
+
+
+def _classify_object(obj) -> str:
+    """Classify an object as ``"signal"`` or ``"image"``.
+
+    Classification rules:
+
+    * ``SignalObj`` → ``"signal"``
+    * ``ImageObj`` → ``"image"``
+    * ``tuple`` of length 2 → ``"signal"`` (interpreted as *(x, y)*)
+    * 1-D ``numpy.ndarray`` → ``"signal"`` (y-only data)
+    * 2-D ``numpy.ndarray`` → ``"image"``
+
+    Args:
+        obj: The object to classify.
+
+    Returns:
+        ``"signal"`` or ``"image"``.
+
+    Raises:
+        TypeError: If *obj* cannot be classified.
+    """
+    import numpy as np  # pylint: disable=import-outside-toplevel
+
+    type_name = type(obj).__name__
+    if type_name == "SignalObj":
+        return _SIGNAL
+    if type_name == "ImageObj":
+        return _IMAGE
+    if isinstance(obj, tuple) and len(obj) == 2:
+        return _SIGNAL
+    if isinstance(obj, np.ndarray):
+        if obj.ndim == 1:
+            return _SIGNAL
+        if obj.ndim == 2:
+            return _IMAGE
+    raise TypeError(f"Cannot classify object of type {type(obj)!r} as signal or image.")
+
+
+def _resolve_and_classify(objs_or_names, workspace) -> tuple[list, str]:
+    """Resolve workspace names and classify a list of objects.
+
+    All items must be of the same category (all signals or all images).
+    Single-string inputs are **not** treated as lists — callers should handle
+    the scalar-vs-list distinction before calling this helper.
+
+    Args:
+        objs_or_names: Iterable of objects and/or workspace name strings.
+        workspace: The :class:`Workspace` used to resolve string names.
+
+    Returns:
+        A ``(resolved_objects, category)`` tuple where *category* is
+        ``"signal"`` or ``"image"``.
+
+    Raises:
+        TypeError: If the list mixes signals and images.
+    """
+    resolved: list = []
+    categories: set[str] = set()
+    for item in objs_or_names:
+        if isinstance(item, str):
+            item = workspace.get(item)
+        resolved.append(item)
+        categories.add(_classify_object(item))
+
+    if len(categories) > 1:
+        raise TypeError(
+            "Cannot mix signals and images in a single plot call. "
+            "Pass only signals or only images."
+        )
+    # Default to signal for empty lists (will produce an empty figure)
+    category = categories.pop() if categories else _SIGNAL
+    return resolved, category
+
+
 # ============================================================================
-# Plotter facade (delegates to matplotlib backend by default)
+# Plotter facade (delegates to active backend)
 # ============================================================================
 
 
@@ -513,10 +594,17 @@ class Plotter:
 
     Example::
 
+        # Single object
         plotter.plot("i042")
         plotter.plot(workspace.get("i042"))
-        plotter.plot_signals([sig1, sig2, sig3])
-        plotter.plot_images([img1, img2])
+
+        # Multiple signals (overlay on shared axes)
+        plotter.plot([sig1, sig2, sig3])
+
+        # Multiple images (subplot grid)
+        plotter.plot([img1, img2])
+
+        # Display analysis results
         plotter.display_table(result)
         plotter.display_geometry(result)
 
@@ -569,91 +657,78 @@ class Plotter:
 
     # -- Delegated plotting methods ------------------------------------------
 
-    def plot(self, obj_or_name, title=None, show_roi=True, show_results=True, **kwargs):
-        """Plot an object or retrieve and plot by name.
+    def plot(
+        self,
+        obj_or_name,
+        title=None,
+        show_roi=True,
+        show_results=True,
+        *,
+        xlabel=None,
+        ylabel=None,
+        xunit=None,
+        yunit=None,
+        zlabel=None,
+        zunit=None,
+        titles=None,
+        results=None,
+        **kwargs,
+    ):
+        """Plot one or more objects.
 
-        See the active backend's ``plot`` method for full documentation.
+        Accepts a single object (or workspace name) **or** a list of objects.
+
+        * **Single object** — renders one signal or image.
+        * **List of signals** — overlays all curves on shared axes.
+        * **List of images** — displays in a subplot grid.
+        * **Mixed list** — raises :class:`TypeError`.
+
+        A single-item list is unwrapped and treated as a single object.
+
+        Args:
+            obj_or_name: Object to plot, workspace name, or a *list* of
+             objects / names. Lists may contain ``SignalObj``, ``ImageObj``,
+             ``numpy.ndarray`` (1-D → signal, 2-D → image), ``(x, y)``
+             tuples (signal), or workspace name strings.
+            title: Plot title (overall figure title for multi-plots).
+            show_roi: Whether to show ROIs defined in the objects.
+            show_results: Whether to show geometry/table results from
+             metadata.
+            xlabel: X-axis label override (multi-plots).
+            ylabel: Y-axis label override (multi-plots).
+            xunit: X-axis unit override (multi-plots).
+            yunit: Y-axis unit override (multi-plots).
+            zlabel: Colorbar label override (images only).
+            zunit: Colorbar unit override (images only).
+            titles: Per-image title list (images only).
+            results: List of ``GeometryResult`` objects to overlay
+             (images only).
 
         Keyword Args:
-            height (int): Figure height in pixels (images only). Defaults to
-             an auto-computed value based on the image aspect ratio.
-            colormap (str): Colormap name override.
+            height (int): Figure height in pixels. For images defaults to
+             an auto-computed value based on the aspect ratio.
+            colormap (str): Colormap name override (images only).
+
+        Returns:
+            A backend-specific result object with Jupyter display
+            capabilities.
+
+        Raises:
+            TypeError: If a list mixes signals and images.
+            KeyError: If a workspace name is not found.
         """
         return self._delegate.plot(
             obj_or_name,
             title=title,
             show_roi=show_roi,
             show_results=show_results,
-            **kwargs,
-        )
-
-    def plot_signals(
-        self,
-        objs_or_names,
-        title=None,
-        xlabel=None,
-        ylabel=None,
-        xunit=None,
-        yunit=None,
-        show_roi=True,
-        show_results=True,
-        **kwargs,
-    ):
-        """Plot multiple signals on a single plot.
-
-        See the active backend's ``plot_signals`` method for full
-        documentation.
-        """
-        return self._delegate.plot_signals(
-            objs_or_names,
-            title=title,
             xlabel=xlabel,
             ylabel=ylabel,
             xunit=xunit,
             yunit=yunit,
-            show_roi=show_roi,
-            show_results=show_results,
-            **kwargs,
-        )
-
-    def plot_images(
-        self,
-        objs_or_names,
-        title=None,
-        titles=None,
-        xlabel=None,
-        ylabel=None,
-        zlabel=None,
-        xunit=None,
-        yunit=None,
-        zunit=None,
-        show_roi=True,
-        show_results=True,
-        results=None,
-        **kwargs,
-    ):
-        """Plot multiple images in a grid layout.
-
-        See the active backend's ``plot_images`` method for full
-        documentation.
-
-        Keyword Args:
-            height (int): Per-subplot height in pixels. Defaults to an
-             auto-computed value based on the image aspect ratio.
-            colormap (str): Colormap name override.
-        """
-        return self._delegate.plot_images(
-            objs_or_names,
-            title=title,
-            titles=titles,
-            xlabel=xlabel,
-            ylabel=ylabel,
             zlabel=zlabel,
-            xunit=xunit,
-            yunit=yunit,
             zunit=zunit,
-            show_roi=show_roi,
-            show_results=show_results,
+            titles=titles,
             results=results,
             **kwargs,
         )
@@ -956,12 +1031,6 @@ try:
         MatplotlibPlotter,
     )
     from datalab_kernel.matplotlib_backend import (  # noqa: E402
-        MplMultiImageResult as MultiImagePlotResult,
-    )
-    from datalab_kernel.matplotlib_backend import (  # noqa: E402
-        MplMultiSignalResult as MultiSignalPlotResult,
-    )
-    from datalab_kernel.matplotlib_backend import (  # noqa: E402
         MplPlotResult as PlotResult,
     )
 except ImportError:  # pragma: no cover — matplotlib is normally required
@@ -981,9 +1050,12 @@ __all__ = [
     "resolve_backend",
     # Backward-compat re-exports
     "PlotResult",
-    "MultiSignalPlotResult",
-    "MultiImagePlotResult",
     "MatplotlibPlotter",
+    # Classification helpers (for backend use)
+    "_classify_object",
+    "_resolve_and_classify",
+    "_SIGNAL",
+    "_IMAGE",
     # Shared helpers (for backend use)
     "DEFAULT_PLOT_WIDTH",
     "MASK_OPACITY",

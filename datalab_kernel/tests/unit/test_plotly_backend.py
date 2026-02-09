@@ -218,21 +218,29 @@ class TestPlotlyPlotter:
         with pytest.raises(KeyError, match="not found"):
             plotter.plot("unknown")
 
-    def test_plot_signals(self):
-        """plot_signals returns PlotlyMultiSignalResult."""
+    def test_plot_signal_list(self):
+        """plot([signals]) returns PlotlyMultiSignalResult."""
         ws = _make_workspace()
         sigs = [make_test_signal(f"s{i}") for i in range(3)]
         plotter = PlotlyPlotter(ws)
-        result = plotter.plot_signals(sigs)
+        result = plotter.plot(sigs)
         assert isinstance(result, PlotlyMultiSignalResult)
 
-    def test_plot_images(self):
-        """plot_images returns PlotlyMultiImageResult."""
+    def test_plot_image_list(self):
+        """plot([images]) returns PlotlyMultiImageResult."""
         ws = _make_workspace()
         imgs = [make_test_image(f"i{i}", (64, 64)) for i in range(2)]
         plotter = PlotlyPlotter(ws)
-        result = plotter.plot_images(imgs)
+        result = plotter.plot(imgs)
         assert isinstance(result, PlotlyMultiImageResult)
+
+    def test_plot_single_item_list_unwraps(self):
+        """plot([single_signal]) returns PlotlyPlotResult (unwrapped)."""
+        ws = _make_workspace()
+        sig = make_test_signal("s0")
+        plotter = PlotlyPlotter(ws)
+        result = plotter.plot([sig])
+        assert isinstance(result, PlotlyPlotResult)
 
     def test_display_table(self):
         """display_table returns TableResultDisplay."""
