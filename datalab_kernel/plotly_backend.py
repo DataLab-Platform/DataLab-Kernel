@@ -567,6 +567,11 @@ def _get_image_coords(obj) -> tuple[np.ndarray, np.ndarray]:
     return x_coords, y_coords
 
 
+#: Default signal figure width/height in pixels.
+#: Matches matplotlib's default 6.4×4.8 in at 100 DPI (4:3 aspect ratio).
+_SIGNAL_DEFAULT_WIDTH = DEFAULT_PLOT_WIDTH
+_SIGNAL_DEFAULT_HEIGHT = int(DEFAULT_PLOT_WIDTH * 3 / 4)  # 480
+
 #: Default plot width in pixels for single-image figures.
 _IMAGE_BASE_WIDTH = DEFAULT_PLOT_WIDTH
 
@@ -889,6 +894,8 @@ class PlotlyPlotResult:
             "yaxis_title": ylabel_str,
             "template": "plotly_white",
             "showlegend": False,
+            "width": _SIGNAL_DEFAULT_WIDTH,
+            "height": _SIGNAL_DEFAULT_HEIGHT,
         }
 
         # Log scale
@@ -1362,6 +1369,8 @@ class PlotlyMultiSignalResult:
                 "xanchor": "left",
                 "x": 0,
             },
+            width=_SIGNAL_DEFAULT_WIDTH,
+            height=_SIGNAL_DEFAULT_HEIGHT,
         )
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor="rgba(0,0,0,0.1)")
         fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor="rgba(0,0,0,0.1)")
