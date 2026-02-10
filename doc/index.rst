@@ -86,21 +86,32 @@ Try it Online
 
 **Experience DataLab-Kernel instantly in your browser** — no installation required!
 
-.. image:: https://img.shields.io/badge/notebook-link-e2d610?logo=jupyter&logoColor=white
+.. list-table::
+   :header-rows: 1
+   :widths: 20 50 30
+
+   * - Notebook
+     - Description
+     - Link
+   * - **Quick Start**
+     - Introduction to Workspace, Plotter, and basic Sigima processing
+     - |badge_quickstart|
+   * - **Advanced Showcase**
+     - Advanced plotting, signal/image processing, ROI, and analysis
+     - |badge_advanced|
+
+.. |badge_quickstart| image:: https://img.shields.io/badge/Quick_Start-notebook.link-e2d610?logo=jupyter&logoColor=white
    :target: https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb
-   :alt: Try it online
+   :alt: Quick Start notebook
 
-Click the badge above to open the quickstart notebook in a live JupyterLite
-environment powered by `notebook.link <https://notebook.link/>`_. This service,
-developed by `QuantStack <https://quantstack.net/>`_, enables sharing and running
-Jupyter notebooks directly in the browser with zero setup.
+.. |badge_advanced| image:: https://img.shields.io/badge/Advanced_Showcase-notebook.link-e2d610?logo=jupyter&logoColor=white
+   :target: https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=%2Fnotebooks%2Fdatalab_kernel_advanced.ipynb
+   :alt: Advanced Showcase notebook
 
-Simply run the cells to explore:
-
-- Loading the DataLab-Kernel extension
-- Accessing workspace objects
-- Visualizing images inline
-- Processing data with Sigima
+Click a badge to open the notebook in a live JupyterLite environment powered by
+`notebook.link <https://notebook.link/>`_. This service, developed by
+`QuantStack <https://quantstack.net/>`_, enables sharing and running Jupyter
+notebooks directly in the browser with zero setup.
 
 
 **Unified API**

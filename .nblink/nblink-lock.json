@@ -1,8 +1,10 @@
 {
     "id": "1223418422504585",
+    "lockVersion": "1.0.3",
     "specs": [
         "xeus-python",
         "datalab-kernel",
+        "plotly",
         "micropip"
     ],
     "channels": [
@@ -957,6 +959,18 @@
             "subdir": "emscripten-wasm32",
             "channel": "emscripten-forge",
             "version": "3.10.8"
+        },
+        "plotly-6.5.2-pyhd8ed1ab_0.conda": {
+            "hash": {
+                "md5": "7702bcd70891dd0154d765a69e1afa94",
+                "sha256": "48d2caf66b8209bfb3fa160f5bc7cbd625deaa4826e8aa1bad706b2dd22bbb86"
+            },
+            "name": "plotly",
+            "size": 4924275,
+            "build": "pyhd8ed1ab_0",
+            "subdir": "noarch",
+            "channel": "conda-forge",
+            "version": "6.5.2"
         }
     },
     "platform": "emscripten-wasm32",
@@ -982,6 +996,5 @@
             }
         ]
     },
-    "lockVersion": "1.0.2",
     "pipPackages": {}
 }
