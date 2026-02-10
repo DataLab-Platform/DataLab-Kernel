@@ -4,6 +4,8 @@
 [![pypi version](https://img.shields.io/pypi/v/datalab-kernel.svg)](https://pypi.org/project/datalab-kernel/)
 [![PyPI status](https://img.shields.io/pypi/status/datalab-kernel.svg)](https://github.com/DataLab-Platform/DataLab-Kernel)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/datalab-kernel.svg)](https://pypi.org/project/datalab-kernel/)
+[![Documentation (stable)](https://img.shields.io/badge/docs-stable-green?logo=readthedocs&logoColor=white)](https://datalab-kernel.readthedocs.io/en/stable/)
+[![Documentation (latest)](https://img.shields.io/badge/docs-latest-brightgreen?logo=readthedocs&logoColor=white)](https://datalab-kernel.readthedocs.io/en/latest/)
 [![Quick Start](https://img.shields.io/badge/Quick_Start-notebook.link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb)
 [![Advanced Showcase](https://img.shields.io/badge/Advanced_Showcase-notebook.link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=%2Fnotebooks%2Fdatalab_kernel_advanced.ipynb)
 
