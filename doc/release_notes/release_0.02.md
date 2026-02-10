@@ -1,6 +1,6 @@
 # Version 0.2 #
 
-## DataLab-Kernel Version 0.2.10 (not released yet) ##
+## DataLab-Kernel Version 0.2.10 (2026-02-10) ##
 
 ### ✨ New features since version 0.2.9 ###
 
