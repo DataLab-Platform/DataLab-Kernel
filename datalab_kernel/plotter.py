@@ -194,6 +194,36 @@ GEOMETRY_META_PREFIX = "Geometry_"
 TABLE_META_PREFIX = "Table_"
 
 
+def _build_results_html(
+    table_results: list,
+    geometry_results: list | None = None,
+) -> str:
+    """Build HTML for analysis results to display below a plot.
+
+    Renders table and geometry results as styled HTML tables using the
+    existing :class:`TableResultDisplay` and :class:`GeometryResultDisplay`
+    classes.  The output is intended to be appended below the figure in
+    notebook cell output (via ``_ipython_display_``).
+
+    Args:
+        table_results: List of TableResult objects
+        geometry_results: Optional list of GeometryResult objects
+
+    Returns:
+        Concatenated HTML string (empty if no results)
+    """
+    if not table_results and not geometry_results:
+        return ""
+
+    parts: list[str] = []
+    for tbl in table_results:
+        parts.append(TableResultDisplay(tbl)._repr_html_())
+    if geometry_results:
+        for geo in geometry_results:
+            parts.append(GeometryResultDisplay(geo)._repr_html_())
+    return "\n".join(parts)
+
+
 def _extract_geometry_results_from_metadata(obj) -> list:
     """Extract GeometryResult objects from object metadata.
 
@@ -838,6 +868,7 @@ class TableResultDisplay:
             title = self._title or self._result.title
 
             # Use TableResult's built-in to_html if available
+            # (to_html() already includes a styled title header)
             if hasattr(self._result, "to_html"):
                 table_html = self._result.to_html(
                     visible_only=self._visible_only,
@@ -846,7 +877,6 @@ class TableResultDisplay:
                 return f"""
                 {self._TABLE_STYLE}
                 <div>
-                    <div class="sigima-table-title">{title}</div>
                     {table_html}
                 </div>
                 """
@@ -940,12 +970,12 @@ class GeometryResultDisplay:
             title = self._title or self._result.title
 
             # Use GeometryResult's built-in to_html if available
+            # (to_html() already includes a styled title header)
             if hasattr(self._result, "to_html"):
                 table_html = self._result.to_html()
                 return f"""
                 {TableResultDisplay._TABLE_STYLE}
                 <div>
-                    <div class="sigima-table-title">{title}</div>
                     {table_html}
                 </div>
                 """
@@ -1061,4 +1091,5 @@ __all__ = [
     "MASK_OPACITY",
     "GEOMETRY_META_PREFIX",
     "TABLE_META_PREFIX",
+    "_build_results_html",
 ]

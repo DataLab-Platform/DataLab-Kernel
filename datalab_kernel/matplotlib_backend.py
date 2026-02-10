@@ -51,6 +51,7 @@ from datalab_kernel.plotter import (
     TableResultDisplay,
     _apply_axis_bounds,
     _apply_log_scale,
+    _build_results_html,
     _extract_geometry_results_from_metadata,
     _extract_table_results_from_metadata,
     _get_curve_style,
@@ -250,6 +251,9 @@ def _add_geometry_to_axes(ax: Axes, result) -> None:
     Iterates over all rows in result.coords to draw each geometric shape.
     Supports POINT, MARKER, RECTANGLE, CIRCLE, SEGMENT, ELLIPSE, and POLYGON.
 
+    A compact text label is placed near each shape showing the result title
+    and key value (e.g., ``"FWHM: 0.52"`` near a segment midpoint).
+
     Args:
         ax: Matplotlib axes object
         result: GeometryResult object with shape information (coords is 2D array)
@@ -258,6 +262,30 @@ def _add_geometry_to_axes(ax: Axes, result) -> None:
     # pylint: disable=import-outside-toplevel
     from matplotlib import patches
     from sigima.objects import KindShape
+
+    label_title = getattr(result, "title", "")
+
+    def _fmt(v: float) -> str:
+        """Format a float value compactly."""
+        if abs(v) < 0.001 or abs(v) >= 10000:
+            return f"{v:.3g}"
+        return f"{v:.3f}"
+
+    def _add_label(x: float, y: float, text: str) -> None:
+        """Add a small text label near a geometry shape."""
+        ax.annotate(
+            text,
+            xy=(x, y),
+            fontsize=8,
+            fontfamily="sans-serif",
+            color="#333",
+            bbox={
+                "boxstyle": "round,pad=0.3",
+                "facecolor": "#ffffc8",
+                "edgecolor": "#c8c800",
+                "alpha": 0.8,
+            },
+        )
 
     # Iterate over all rows in coords (each row is one shape)
     for coords in result.coords:
@@ -272,6 +300,7 @@ def _add_geometry_to_axes(ax: Axes, result) -> None:
                 markeredgecolor="black",
                 markeredgewidth=1,
             )
+            _add_label(x0, y0, f"{label_title}: ({_fmt(x0)}, {_fmt(y0)})")
         elif result.kind == KindShape.MARKER:
             x0, y0 = coords
             # Marker with crosshair style
@@ -285,6 +314,7 @@ def _add_geometry_to_axes(ax: Axes, result) -> None:
                 color="yellow",
                 markeredgewidth=2,
             )
+            _add_label(x0, y0, f"{label_title}: ({_fmt(x0)}, {_fmt(y0)})")
         elif result.kind == KindShape.RECTANGLE:
             x0, y0, dx, dy = coords
             rect = patches.Rectangle(
@@ -308,9 +338,13 @@ def _add_geometry_to_axes(ax: Axes, result) -> None:
                 linestyle="--",
             )
             ax.add_patch(circle)
+            _add_label(xc + r, yc, f"{label_title}: r={_fmt(r)}")
         elif result.kind == KindShape.SEGMENT:
             x0, y0, x1, y1 = coords
             ax.plot([x0, x1], [y0, y1], "y--", linewidth=2)
+            length = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
+            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+            _add_label(mx, my, f"{label_title}: {_fmt(length)}")
         elif result.kind == KindShape.ELLIPSE:
             # For ellipse, coords are (xc, yc, a, b, theta)
             xc, yc, a, b, theta = coords
@@ -369,6 +403,25 @@ class MplPlotResult:
         self._show_results = show_results
         self._results = results
         self._kwargs = kwargs
+        self._results_html = ""
+
+    def _ipython_display_(self, **kwargs) -> None:
+        """Display figure and results as separate outputs in Jupyter."""
+        from IPython.display import (  # pylint: disable=import-outside-toplevel
+            HTML,
+            display,
+        )
+
+        # Force a fresh render so _results_html is populated
+        try:
+            html = self._repr_html_()
+            display(HTML(html))
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            display(HTML(f"<div>Error rendering plot: {exc}</div>"))
+            return
+
+        if self._results_html:
+            display(HTML(self._results_html))
 
     def _repr_html_(self) -> str:
         """Return HTML representation for Jupyter display."""
@@ -508,7 +561,7 @@ class MplPlotResult:
                 _add_geometry_to_axes(ax, result)
 
             table_results = _extract_table_results_from_metadata(obj)
-            _add_table_results_to_axes(ax, table_results, metadata_results)
+            self._results_html = _build_results_html(table_results, metadata_results)
 
     def _render_image(self, ax: Axes, fig) -> None:
         """Render image data to axes.
@@ -627,7 +680,7 @@ class MplPlotResult:
 
             # Auto-extract and display table results (statistics) from metadata
             table_results = _extract_table_results_from_metadata(obj)
-            _add_table_results_to_axes(ax, table_results, results_to_display)
+            self._results_html = _build_results_html(table_results, results_to_display)
 
     def __repr__(self) -> str:
         """Return string representation."""
@@ -677,6 +730,24 @@ class MplMultiSignalResult:
         self._show_roi = show_roi
         self._show_results = show_results
         self._kwargs = kwargs
+        self._results_html = ""
+
+    def _ipython_display_(self, **kwargs) -> None:
+        """Display figure and results as separate outputs in Jupyter."""
+        from IPython.display import (  # pylint: disable=import-outside-toplevel
+            HTML,
+            display,
+        )
+
+        try:
+            html = self._repr_html_()
+            display(HTML(html))
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            display(HTML(f"<div>Error rendering signals: {exc}</div>"))
+            return
+
+        if self._results_html:
+            display(HTML(self._results_html))
 
     def _repr_html_(self) -> str:
         """Return HTML representation for Jupyter display."""
@@ -715,6 +786,9 @@ class MplMultiSignalResult:
         y_label = self._ylabel
         x_unit = self._xunit
         y_unit = self._yunit
+
+        all_tbl_results: list = []
+        all_geo_results: list = []
 
         for idx, data_or_obj in enumerate(self._objs):
             color, linestyle = _get_next_style(idx)
@@ -797,7 +871,8 @@ class MplMultiSignalResult:
                         _add_geometry_to_axes(ax, result)
 
                     table_results = _extract_table_results_from_metadata(obj)
-                    _add_table_results_to_axes(ax, table_results, metadata_results)
+                    all_tbl_results.extend(table_results)
+                    all_geo_results.extend(metadata_results)
 
             elif isinstance(data_or_obj, tuple) and len(data_or_obj) == 2:
                 # Tuple of (x, y) arrays
@@ -824,6 +899,9 @@ class MplMultiSignalResult:
 
             else:
                 raise TypeError(f"Unsupported data type: {type(data_or_obj)}")
+
+        # Build HTML for results below the plot
+        self._results_html = _build_results_html(all_tbl_results, all_geo_results)
 
         # Set axis labels with units
         if x_label:
@@ -906,6 +984,24 @@ class MplMultiImageResult:
         self._rows = rows
         self._share_axes = share_axes
         self._kwargs = kwargs
+        self._results_html = ""
+
+    def _ipython_display_(self, **kwargs) -> None:
+        """Display figure and results as separate outputs in Jupyter."""
+        from IPython.display import (  # pylint: disable=import-outside-toplevel
+            HTML,
+            display,
+        )
+
+        try:
+            html = self._repr_html_()
+            display(HTML(html))
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            display(HTML(f"<div>Error rendering images: {exc}</div>"))
+            return
+
+        if self._results_html:
+            display(HTML(self._results_html))
 
     def _repr_html_(self) -> str:
         """Return HTML representation for Jupyter display."""
@@ -986,6 +1082,9 @@ class MplMultiImageResult:
         z_unit = self._zunit
 
         default_colormap = self._kwargs.get("colormap", None)
+
+        all_tbl_results: list = []
+        all_geo_results: list = []
 
         for idx, (ax, img, img_title, result) in enumerate(
             zip(axes_flat, self._objs, titles, results_list)
@@ -1125,7 +1224,11 @@ class MplMultiImageResult:
                 # Auto-extract and display table results (statistics) from metadata
                 if is_image_obj:
                     table_results = _extract_table_results_from_metadata(img)
-                    _add_table_results_to_axes(ax, table_results, results_to_display)
+                    all_tbl_results.extend(table_results)
+                    all_geo_results.extend(results_to_display)
+
+        # Build HTML for results below the plot
+        self._results_html = _build_results_html(all_tbl_results, all_geo_results)
 
         # Hide unused subplots
         for idx in range(n_images, len(axes_flat)):

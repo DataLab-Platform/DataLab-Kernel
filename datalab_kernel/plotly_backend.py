@@ -55,6 +55,7 @@ from datalab_kernel.plotter import (
     MASK_OPACITY,
     GeometryResultDisplay,
     TableResultDisplay,
+    _build_results_html,
     _extract_geometry_results_from_metadata,
     _extract_table_results_from_metadata,
     _get_curve_style,
@@ -385,6 +386,9 @@ def _add_geometry_traces(
     Uses ``fig.add_shape()`` for rectangles, circles, ellipses, lines/segments
     and ``fig.add_trace()`` for point/marker overlays.
 
+    A compact text label is placed near each shape showing the result title
+    and key value (e.g., ``"FWHM: 0.52"`` near a segment midpoint).
+
     Args:
         fig: Plotly Figure object
         result: GeometryResult object with shape information
@@ -403,6 +407,42 @@ def _add_geometry_traces(
         shape_kwargs["row"] = row
         shape_kwargs["col"] = col
 
+    # Determine annotation axis references for subplots
+    ann_kwargs: dict = {}
+    if row is not None and col is not None:
+        subplot_idx = (
+            (row - 1) * fig._grid_ref[0].__len__() + col
+            if hasattr(fig, "_grid_ref")
+            else 1
+        )
+        ann_kwargs["xref"] = f"x{subplot_idx}" if subplot_idx > 1 else "x"
+        ann_kwargs["yref"] = f"y{subplot_idx}" if subplot_idx > 1 else "y"
+
+    label_title = getattr(result, "title", "")
+
+    def _fmt(v: float) -> str:
+        """Format a float value compactly."""
+        if abs(v) < 0.001 or abs(v) >= 10000:
+            return f"{v:.3g}"
+        return f"{v:.3f}"
+
+    def _add_label(x: float, y: float, text: str) -> None:
+        """Add a small text label near a geometry shape."""
+        fig.add_annotation(
+            x=x,
+            y=y,
+            text=text,
+            showarrow=False,
+            font={"family": "sans-serif", "size": 10, "color": "#333"},
+            bgcolor="rgba(255, 255, 200, 0.8)",
+            bordercolor="rgba(200, 200, 0, 0.6)",
+            borderwidth=1,
+            borderpad=3,
+            xanchor="left",
+            yanchor="bottom",
+            **ann_kwargs,
+        )
+
     for coords in result.coords:
         if result.kind == KindShape.POINT:
             x0, y0 = coords
@@ -420,6 +460,7 @@ def _add_geometry_traces(
                 ),
                 **trace_kwargs,
             )
+            _add_label(x0, y0, f"{label_title}: ({_fmt(x0)}, {_fmt(y0)})")
         elif result.kind == KindShape.MARKER:
             x0, y0 = coords
             # Crosshair lines
@@ -450,6 +491,7 @@ def _add_geometry_traces(
                 ),
                 **trace_kwargs,
             )
+            _add_label(x0, y0, f"{label_title}: ({_fmt(x0)}, {_fmt(y0)})")
         elif result.kind == KindShape.RECTANGLE:
             x0, y0, dx, dy = coords
             fig.add_shape(
@@ -472,6 +514,7 @@ def _add_geometry_traces(
                 line={"color": "yellow", "width": 2, "dash": "dash"},
                 **shape_kwargs,
             )
+            _add_label(xc + r, yc, f"{label_title}: r={_fmt(r)}")
         elif result.kind == KindShape.SEGMENT:
             x0, y0, x1, y1 = coords
             fig.add_shape(
@@ -483,6 +526,9 @@ def _add_geometry_traces(
                 line={"color": "yellow", "width": 2, "dash": "dash"},
                 **shape_kwargs,
             )
+            length = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
+            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+            _add_label(mx, my, f"{label_title}: {_fmt(length)}")
         elif result.kind == KindShape.ELLIPSE:
             xc, yc, a, b, theta = coords
             # Generate parametric ellipse points
@@ -736,8 +782,33 @@ class PlotlyPlotResult:
         self._show_results = show_results
         self._results = results
         self._kwargs = kwargs
+        self._results_html = ""
 
     # ---- Jupyter display protocol ----
+
+    def _ipython_display_(self, **kwargs) -> None:
+        """Display figure and results as separate outputs in Jupyter.
+
+        Uses IPython's display API to emit the Plotly figure via its native
+        JSON MIME type, then appends any analysis results as styled HTML
+        tables below the figure.
+        """
+        from IPython.display import (  # pylint: disable=import-outside-toplevel
+            HTML,
+            display,
+        )
+
+        try:
+            fig = self._build_figure()
+            bundle = _figure_to_mimebundle(fig)
+            display(bundle, raw=True)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            title = self._title or getattr(self._obj, "title", "Untitled")
+            display(HTML(f"<div>Error rendering {title}: {exc}</div>"))
+            return
+
+        if self._results_html:
+            display(HTML(self._results_html))
 
     def _repr_mimebundle_(self, **kwargs) -> dict:
         """Return MIME bundle for Jupyter display.
@@ -936,8 +1007,7 @@ class PlotlyPlotResult:
                 _add_geometry_traces(fig, res)
 
             tbl_results = _extract_table_results_from_metadata(obj)
-            ann_text = _build_annotation_text(tbl_results, geo_results)
-            _add_result_annotation(fig, ann_text)
+            self._results_html = _build_results_html(tbl_results, geo_results)
 
         return fig
 
@@ -1081,8 +1151,7 @@ class PlotlyPlotResult:
                 _add_geometry_traces(fig, res)
 
             tbl_results = _extract_table_results_from_metadata(obj)
-            ann_text = _build_annotation_text(tbl_results, results_to_display)
-            _add_result_annotation(fig, ann_text)
+            self._results_html = _build_results_html(tbl_results, results_to_display)
 
         return fig
 
@@ -1134,8 +1203,27 @@ class PlotlyMultiSignalResult:
         self._show_roi = show_roi
         self._show_results = show_results
         self._kwargs = kwargs
+        self._results_html = ""
 
     # ---- Jupyter display protocol ----
+
+    def _ipython_display_(self, **kwargs) -> None:
+        """Display figure and results as separate outputs in Jupyter."""
+        from IPython.display import (  # pylint: disable=import-outside-toplevel
+            HTML,
+            display,
+        )
+
+        try:
+            fig = self._build_figure()
+            bundle = _figure_to_mimebundle(fig)
+            display(bundle, raw=True)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            display(HTML(f"<div>Error rendering signals: {exc}</div>"))
+            return
+
+        if self._results_html:
+            display(HTML(self._results_html))
 
     def _repr_mimebundle_(self, **kwargs) -> dict:
         """Return MIME bundle for Jupyter display.
@@ -1351,10 +1439,9 @@ class PlotlyMultiSignalResult:
             else:
                 raise TypeError(f"Unsupported data type: {type(data_or_obj)}")
 
-        # Annotation text for results
+        # Build results HTML for display below the plot
         if all_tbl_results or all_geo_results:
-            ann_text = _build_annotation_text(all_tbl_results, all_geo_results)
-            _add_result_annotation(fig, ann_text)
+            self._results_html = _build_results_html(all_tbl_results, all_geo_results)
 
         # Final layout
         xlabel_str = _format_axis_title(x_label, x_unit)
@@ -1447,8 +1534,27 @@ class PlotlyMultiImageResult:
         self._results = results
         self._rows = rows
         self._kwargs = kwargs
+        self._results_html = ""
 
     # ---- Jupyter display protocol ----
+
+    def _ipython_display_(self, **kwargs) -> None:
+        """Display figure and results as separate outputs in Jupyter."""
+        from IPython.display import (  # pylint: disable=import-outside-toplevel
+            HTML,
+            display,
+        )
+
+        try:
+            fig = self._build_figure()
+            bundle = _figure_to_mimebundle(fig)
+            display(bundle, raw=True)
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            display(HTML(f"<div>Error rendering images: {exc}</div>"))
+            return
+
+        if self._results_html:
+            display(HTML(self._results_html))
 
     def _repr_mimebundle_(self, **kwargs) -> dict:
         """Return MIME bundle for Jupyter display.
@@ -1534,6 +1640,9 @@ class PlotlyMultiImageResult:
         z_unit = self._zunit
 
         default_colormap = self._kwargs.get("colormap", None)
+
+        all_tbl_results: list = []
+        all_geo_results: list = []
 
         for idx, (img, result) in enumerate(zip(self._objs, results_list)):
             row = idx // ncols + 1
@@ -1681,9 +1790,11 @@ class PlotlyMultiImageResult:
 
                 if is_image_obj:
                     tbl_results = _extract_table_results_from_metadata(img)
-                    ann_text = _build_annotation_text(tbl_results, results_to_display)
-                    if ann_text:
-                        _add_result_annotation(fig, ann_text, row=row, col=col)
+                    all_tbl_results.extend(tbl_results)
+                    all_geo_results.extend(results_to_display)
+
+        # Build HTML for results below the plot
+        self._results_html = _build_results_html(all_tbl_results, all_geo_results)
 
         # Overall layout — derive height from first image's aspect ratio
         first_data = self._objs[0]
