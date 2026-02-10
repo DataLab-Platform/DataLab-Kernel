@@ -46,6 +46,16 @@ Click a badge to open the notebook in a live JupyterLite environment powered by 
 
 ---
 
+## Documentation
+
+📖 Full documentation is available at:
+👉 <https://datalab-kernel.readthedocs.io/>
+
+> Want to use DataLab-Kernel inside DataLab with GUI tools?
+> Check out the full platform: [DataLab](https://datalab-platform.com/)
+
+---
+
 ## Key Features
 
 - **Single, stable user API**
@@ -246,13 +256,6 @@ This enables:
 - sharing notebooks and data with collaborators,
 - replaying analyses without DataLab,
 - resuming workflows inside DataLab by reopening the associated project.
-
----
-
-## Documentation
-
-- **User contract and behavior**: see `plans/specification.md`
-- **Vision and architectural principles**: see `plans/architecture.md`
 
 ---
 

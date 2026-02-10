@@ -131,4 +131,5 @@ notebooks directly in the browser with zero setup.
    api/index
    examples/index
    contributing/index
+   release_notes/index
    requirements
