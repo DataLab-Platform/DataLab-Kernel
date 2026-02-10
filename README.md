@@ -37,10 +37,10 @@ It is a **complementary execution layer** that turns DataLab into a hybrid scien
 
 **Experience DataLab-Kernel instantly in your browser** — no installation required!
 
-| Notebook | Description | Link |
-| --- | --- | --- |
-| **Quick Start** | Introduction to Workspace, Plotter, and basic Sigima processing | [![Quick Start](https://img.shields.io/badge/Quick_Start-notebook.link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb) |
-| **Advanced Showcase** | Advanced plotting, signal/image processing, ROI, and analysis | [![Advanced Showcase](https://img.shields.io/badge/Advanced_Showcase-notebook.link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=%2Fnotebooks%2Fdatalab_kernel_advanced.ipynb) |
+| | |
+| --- | --- |
+| [![Quick Start](https://img.shields.io/badge/Quick_Start-notebook.link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb) | Introduction to Workspace, Plotter, and basic Sigima processing |
+| [![Advanced Showcase](https://img.shields.io/badge/Advanced_Showcase-notebook.link-e2d610?logo=jupyter&logoColor=white)](https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=%2Fnotebooks%2Fdatalab_kernel_advanced.ipynb) | Advanced plotting, signal/image processing, ROI, and analysis |
 
 Click a badge to open the notebook in a live JupyterLite environment powered by [**notebook.link**](https://notebook.link/). This service, developed by [**QuantStack**](https://quantstack.net/), enables sharing and running Jupyter notebooks directly in the browser with zero setup.
 

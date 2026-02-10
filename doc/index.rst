@@ -87,18 +87,12 @@ Try it Online
 **Experience DataLab-Kernel instantly in your browser** — no installation required!
 
 .. list-table::
-   :header-rows: 1
-   :widths: 20 50 30
+   :widths: 30 70
 
-   * - Notebook
-     - Description
-     - Link
-   * - **Quick Start**
+   * - |badge_quickstart|
      - Introduction to Workspace, Plotter, and basic Sigima processing
-     - |badge_quickstart|
-   * - **Advanced Showcase**
+   * - |badge_advanced|
      - Advanced plotting, signal/image processing, ROI, and analysis
-     - |badge_advanced|
 
 .. |badge_quickstart| image:: https://img.shields.io/badge/Quick_Start-notebook.link-e2d610?logo=jupyter&logoColor=white
    :target: https://notebook.link/github/DataLab-Platform/DataLab-Kernel/tree/main/notebooks/?path=/notebooks/datalab_kernel_quickstart.ipynb
