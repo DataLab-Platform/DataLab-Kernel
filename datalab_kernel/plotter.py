@@ -482,9 +482,9 @@ def _is_non_uniform_image(obj) -> bool:
     Returns:
         True if the image has non-uniform coordinate arrays
     """
-    if not hasattr(obj, "uniform_coords"):
+    if not hasattr(obj, "is_uniform_coords"):
         return False
-    if obj.uniform_coords:
+    if obj.is_uniform_coords:
         return False
     xcoords = getattr(obj, "xcoords", None)
     ycoords = getattr(obj, "ycoords", None)
