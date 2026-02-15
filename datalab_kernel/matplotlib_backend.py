@@ -207,6 +207,9 @@ def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
 
     roi_class = type(roi).__name__
 
+    roi_title = getattr(roi, "title", "")
+    roi_label = roi_title if roi_title else "ROI"
+
     if roi_class == "RectangularROI":
         # coords = [x0, y0, dx, dy]
         x0, y0, dx, dy = roi.coords
@@ -217,16 +220,37 @@ def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
             linewidth=2,
             edgecolor="red",
             facecolor="none",
-            label="ROI",
+            label=roi_label,
         )
         ax.add_patch(rect)
+        ax.annotate(
+            roi_label,
+            xy=(x0 + dx / 2, y0),
+            fontsize=8,
+            color="red",
+            ha="center",
+            va="bottom",
+        )
     elif roi_class == "CircularROI":
         # coords = [xc, yc, r]
         xc, yc, r = roi.coords
         circle = patches.Circle(
-            (xc, yc), r, linewidth=2, edgecolor="red", facecolor="none", label="ROI"
+            (xc, yc),
+            r,
+            linewidth=2,
+            edgecolor="red",
+            facecolor="none",
+            label=roi_label,
         )
         ax.add_patch(circle)
+        ax.annotate(
+            roi_label,
+            xy=(xc, yc - r),
+            fontsize=8,
+            color="red",
+            ha="center",
+            va="bottom",
+        )
     elif roi_class == "PolygonalROI":
         # coords = [x0, y0, x1, y1, x2, y2, ...]
         points = roi.coords.reshape(-1, 2)
@@ -236,13 +260,21 @@ def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
             linewidth=2,
             edgecolor="red",
             facecolor="none",
-            label="ROI",
+            label=roi_label,
         )
         ax.add_patch(polygon)
+        ax.annotate(
+            roi_label,
+            xy=(points[:, 0].mean(), points[:, 1].min()),
+            fontsize=8,
+            color="red",
+            ha="center",
+            va="bottom",
+        )
     elif roi_class == "SegmentROI" and obj is not None:
         # Signal ROI: X interval
         x0, x1 = roi.get_physical_coords(obj)
-        ax.axvspan(x0, x1, alpha=0.2, color="red", label="ROI")
+        ax.axvspan(x0, x1, alpha=0.2, color="red", label=roi_label)
 
 
 def _add_geometry_to_axes(ax: Axes, result) -> None:
@@ -854,14 +886,16 @@ class MplMultiSignalResult:
                 if self._show_roi and hasattr(obj, "roi") and obj.roi:
                     for roi_idx, single_roi in enumerate(obj.roi):
                         x0, x1 = single_roi.get_physical_coords(obj)
+                        roi_title = getattr(single_roi, "title", "")
+                        roi_label = (
+                            roi_title if roi_title else f"{label} ROI {roi_idx + 1}"
+                        )
                         ax.axvspan(
                             x0,
                             x1,
                             alpha=0.2,
                             color=plot_style.get("color", color),
-                            label=f"{label} ROI {roi_idx + 1}"
-                            if roi_idx == 0
-                            else None,
+                            label=roi_label if roi_idx == 0 else None,
                         )
 
                 # Auto-extract and display geometry/table results from metadata

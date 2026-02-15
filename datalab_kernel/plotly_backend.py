@@ -295,6 +295,23 @@ def _add_result_annotation(fig: go.Figure, text: str, row=None, col=None) -> Non
     )
 
 
+def _roi_annotation_text(roi, index: int) -> str:
+    """Return annotation text for an ROI shape.
+
+    Uses the ROI's *title* attribute when set, otherwise falls back to
+    ``"ROI <index>"``.
+
+    Args:
+        roi: Single ROI object (SegmentROI, RectangularROI, CircularROI, etc.)
+        index: 0-based ROI index (used for fallback label)
+
+    Returns:
+        Annotation text string
+    """
+    title = getattr(roi, "title", "")
+    return title if title else f"ROI {index + 1}"
+
+
 def _add_signal_roi_shapes(fig: go.Figure, obj) -> None:
     """Add ROI vertical rectangles for signal objects.
 
@@ -304,7 +321,7 @@ def _add_signal_roi_shapes(fig: go.Figure, obj) -> None:
     """
     if not hasattr(obj, "roi") or not obj.roi:
         return
-    for roi in obj.roi:
+    for roi_idx, roi in enumerate(obj.roi):
         roi_class = type(roi).__name__
         if roi_class == "SegmentROI" and obj is not None:
             x0, x1 = roi.get_physical_coords(obj)
@@ -313,7 +330,7 @@ def _add_signal_roi_shapes(fig: go.Figure, obj) -> None:
                 x1=x1,
                 fillcolor=ROI_FILL_COLOR,
                 line={"color": ROI_COLOR, "width": 2},
-                annotation_text="ROI",
+                annotation_text=_roi_annotation_text(roi, roi_idx),
                 annotation_position="top left",
             )
 
@@ -331,12 +348,16 @@ def _add_image_roi_shapes(
     """
     if not hasattr(obj, "roi") or not obj.roi:
         return
-    for roi in obj.roi:
+    for roi_idx, roi in enumerate(obj.roi):
         roi_class = type(roi).__name__
         shape_kwargs: dict = {}
         if row is not None and col is not None:
             shape_kwargs["row"] = row
             shape_kwargs["col"] = col
+
+        roi_label = _roi_annotation_text(roi, roi_idx)
+        label_x: float | None = None
+        label_y: float | None = None
 
         if roi_class == "RectangularROI":
             x0, y0, dx, dy = roi.coords
@@ -349,6 +370,7 @@ def _add_image_roi_shapes(
                 line={"color": "red", "width": 2},
                 **shape_kwargs,
             )
+            label_x, label_y = x0 + dx / 2, y0
         elif roi_class == "CircularROI":
             xc, yc, r = roi.coords
             fig.add_shape(
@@ -360,6 +382,7 @@ def _add_image_roi_shapes(
                 line={"color": "red", "width": 2},
                 **shape_kwargs,
             )
+            label_x, label_y = xc, yc - r
         elif roi_class == "PolygonalROI":
             points = roi.coords.reshape(-1, 2)
             # Close the polygon
@@ -371,6 +394,23 @@ def _add_image_roi_shapes(
                 path=path,
                 line={"color": "red", "width": 2},
                 **shape_kwargs,
+            )
+            label_x, label_y = float(points[:, 0].mean()), float(points[:, 1].min())
+
+        # Add ROI title annotation
+        if label_x is not None and label_y is not None:
+            ann_kwargs: dict = {}
+            if row is not None and col is not None:
+                ann_kwargs["row"] = row
+                ann_kwargs["col"] = col
+            fig.add_annotation(
+                x=label_x,
+                y=label_y,
+                text=roi_label,
+                showarrow=False,
+                font={"size": 10, "color": "red"},
+                yshift=-12,
+                **ann_kwargs,
             )
 
 
@@ -1388,6 +1428,8 @@ class PlotlyMultiSignalResult:
                 if self._show_roi and hasattr(obj, "roi") and obj.roi:
                     for roi_idx, single_roi in enumerate(obj.roi):
                         x0, x1 = single_roi.get_physical_coords(obj)
+                        roi_title = getattr(single_roi, "title", "")
+                        roi_label = roi_title if roi_title else f"ROI {roi_idx + 1}"
                         fig.add_vrect(
                             x0=x0,
                             x1=x1,
@@ -1395,9 +1437,7 @@ class PlotlyMultiSignalResult:
                                 line_kw.get("color", color), 0.15
                             ),
                             line={"color": line_kw.get("color", color), "width": 1},
-                            annotation_text=(
-                                f"{label} ROI {roi_idx + 1}" if roi_idx == 0 else None
-                            ),
+                            annotation_text=roi_label,
                             annotation_position="top left",
                         )
 
