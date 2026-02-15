@@ -1,5 +1,34 @@
 # Version 0.2 #
 
+## DataLab-Kernel Version 0.2.11 (2026-02-15) ##
+
+### 🛠️ Bug Fixes since version 0.2.10 ###
+
+* Fixed ROI labels showing generic "ROI" text instead of user-defined titles in
+  both Plotly and Matplotlib backends — ROI shapes now display the title attribute
+  when set, falling back to "ROI 1", "ROI 2", etc.
+
+* Fixed Plotly multi-signal overlay showing "new text" on the second ROI instead
+  of a proper label (the annotation text was inadvertently set to `None`,
+  triggering Plotly's default placeholder)
+
+* Fixed missing ROI title annotations on image ROI shapes (rectangles, circles,
+  polygons) in both Plotly and Matplotlib backends
+
+* Fixed non-uniform image detection using the wrong attribute name
+  (`uniform_coords` instead of `is_uniform_coords`), which caused non-uniform
+  coordinate images to render incorrectly
+
+### 🔧 Other changes since version 0.2.10 ###
+
+* Revamped the Advanced Showcase notebook with more relevant examples: double-
+  Gaussian peaks for FWHM demo, Butterworth bandpass filter for log-scale display,
+  per-ROI statistics and centroid overlays in analysis results
+
+* Added `requirements.txt` with package dependencies
+
+* CI: PyPI deployment now gates on test suite passing before publishing
+
 ## DataLab-Kernel Version 0.2.10 (2026-02-10) ##
 
 ### ✨ New features since version 0.2.9 ###
