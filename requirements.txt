@@ -1,0 +1,7 @@
+xeus-python>=0.17.0
+xeus-python-shell>=0.6.0
+numpy>=1.22
+httpx>=0.25.0
+h5py>=3.0
+matplotlib>=3.5
+sigima>=1.0
