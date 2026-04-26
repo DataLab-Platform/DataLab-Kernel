@@ -111,6 +111,39 @@ _MPL_TO_PLOTLY_DASH = {
 ROI_COLOR = "rgba(255, 0, 0, 0.55)"
 ROI_FILL_COLOR = "rgba(255, 0, 0, 0.15)"
 
+#: Color palette used to cycle through Signal ROI fill colors when several
+#: ROIs are defined on the same signal. Mirrors the ``tab10``-inspired
+#: palette used by DataLab so ROI colors stay consistent across both apps.
+ROI_FILL_COLORS = (
+    "#1f77b4",  # blue
+    "#ff7f0e",  # orange
+    "#2ca02c",  # green
+    "#d62728",  # red
+    "#9467bd",  # purple
+    "#8c564b",  # brown
+    "#e377c2",  # pink
+    "#7f7f7f",  # grey
+    "#bcbd22",  # yellow-green
+    "#17becf",  # cyan
+)
+#: Translucency of the ROI fill (0..1).
+ROI_FILL_ALPHA = 0.35
+
+
+def _hex_to_rgba(hex_color: str, alpha: float) -> str:
+    """Convert a ``#rrggbb`` hex color to a Plotly ``rgba(r, g, b, a)`` string."""
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+def roi_color_for_index(index: int, alpha: float = ROI_FILL_ALPHA) -> str:
+    """Return the ROI fill color (rgba string) for the given ROI index."""
+    return _hex_to_rgba(ROI_FILL_COLORS[index % len(ROI_FILL_COLORS)], alpha)
+
+
 #: Geometry overlay colour
 GEOMETRY_COLOR = "rgba(255, 255, 0, 0.85)"
 
@@ -313,7 +346,12 @@ def _roi_annotation_text(roi, index: int) -> str:
 
 
 def _add_signal_roi_shapes(fig: go.Figure, obj) -> None:
-    """Add ROI vertical rectangles for signal objects.
+    """Add Signal ROI overlays following the underlying curve.
+
+    For each :class:`SegmentROI` we draw a translucent area that follows the
+    signal between ``xmin`` and ``xmax``, with a baseline at ``y=0``. Each
+    ROI uses a different color picked from :data:`ROI_FILL_COLORS` (cycling)
+    so several ROIs on the same signal are visually distinguishable.
 
     Args:
         fig: Plotly Figure object
@@ -321,18 +359,66 @@ def _add_signal_roi_shapes(fig: go.Figure, obj) -> None:
     """
     if not hasattr(obj, "roi") or not obj.roi:
         return
+    # pylint: disable=import-outside-toplevel
+    import plotly.graph_objects as go
+
+    x_arr = np.asarray(getattr(obj, "x", None), dtype=float)
+    y_arr = np.asarray(getattr(obj, "y", None), dtype=float)
+    have_curve = (
+        x_arr is not None
+        and y_arr is not None
+        and x_arr.size >= 2
+        and y_arr.size == x_arr.size
+    )
+    if have_curve:
+        finite = np.isfinite(x_arr) & np.isfinite(y_arr)
+        x_arr = x_arr[finite]
+        y_arr = y_arr[finite]
+        have_curve = x_arr.size >= 2
+        if have_curve:
+            order = np.argsort(x_arr)
+            x_arr = x_arr[order]
+            y_arr = y_arr[order]
     for roi_idx, roi in enumerate(obj.roi):
         roi_class = type(roi).__name__
-        if roi_class == "SegmentROI" and obj is not None:
-            x0, x1 = roi.get_physical_coords(obj)
-            fig.add_vrect(
-                x0=x0,
-                x1=x1,
-                fillcolor=ROI_FILL_COLOR,
-                line={"color": ROI_COLOR, "width": 2},
-                annotation_text=_roi_annotation_text(roi, roi_idx),
-                annotation_position="top left",
-            )
+        if roi_class != "SegmentROI" or obj is None:
+            continue
+        x0, x1 = roi.get_physical_coords(obj)
+        fill_color = roi_color_for_index(roi_idx)
+        annotation = _roi_annotation_text(roi, roi_idx)
+        if have_curve:
+            x_lo = max(float(x_arr[0]), min(x0, x1))
+            x_hi = min(float(x_arr[-1]), max(x0, x1))
+            if x_hi > x_lo:
+                mask = (x_arr >= x_lo) & (x_arr <= x_hi)
+                xs_in = x_arr[mask]
+                ys_in = y_arr[mask]
+                y_left = float(np.interp(x_lo, x_arr, y_arr))
+                y_right = float(np.interp(x_hi, x_arr, y_arr))
+                xs = np.concatenate(([x_lo], xs_in, [x_hi]))
+                ys = np.concatenate(([y_left], ys_in, [y_right]))
+                fig.add_trace(
+                    go.Scatter(
+                        x=xs,
+                        y=ys,
+                        fill="tozeroy",
+                        fillcolor=fill_color,
+                        mode="none",
+                        name=annotation,
+                        hoverinfo="name",
+                        showlegend=False,
+                    )
+                )
+                continue
+        # Fallback: full-height vertical strip (curve unavailable or empty)
+        fig.add_vrect(
+            x0=x0,
+            x1=x1,
+            fillcolor=fill_color,
+            line={"color": fill_color, "width": 1},
+            annotation_text=annotation,
+            annotation_position="top left",
+        )
 
 
 def _add_image_roi_shapes(

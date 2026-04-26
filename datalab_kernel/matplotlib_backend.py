@@ -78,6 +78,35 @@ COLORS = ["blue", "red", "green", "orange", "purple", "brown", "pink", "gray", "
 #: Linestyle palette for multi-signal cycling.
 LINESTYLES = ["-", "--", "-.", ":"]
 
+#: Color palette used to cycle through Signal ROI fill colors when several
+#: ROIs are defined on the same signal. Matches the matplotlib ``tab10``
+#: palette used in DataLab so that ROI colors stay consistent across both
+#: applications.
+ROI_FILL_COLORS = (
+    "#1f77b4",  # blue
+    "#ff7f0e",  # orange
+    "#2ca02c",  # green
+    "#d62728",  # red
+    "#9467bd",  # purple
+    "#8c564b",  # brown
+    "#e377c2",  # pink
+    "#7f7f7f",  # grey
+    "#bcbd22",  # yellow-green
+    "#17becf",  # cyan
+)
+
+#: Translucency (matplotlib alpha) used for the ROI fill.
+ROI_FILL_ALPHA = 0.35
+
+
+def roi_color_for_index(index: int) -> str:
+    """Return the ROI fill color (hex string) for the given ROI index.
+
+    The index is taken modulo the palette size so colors cycle when more
+    ROIs than palette entries are defined.
+    """
+    return ROI_FILL_COLORS[index % len(ROI_FILL_COLORS)]
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers (matplotlib-specific)
@@ -192,14 +221,18 @@ def _add_table_results_to_axes(
     )
 
 
-def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
+def _add_single_roi_to_axes(ax: Axes, roi, obj=None, roi_index: int = 0) -> None:
     """Add single ROI overlay to matplotlib axes.
 
     Args:
         ax: Matplotlib axes object
         roi: Single ROI object (SegmentROI, RectangularROI, CircularROI, or
          PolygonalROI)
-        obj: Parent object (used for SegmentROI to get physical coordinates)
+        obj: Parent object (used for SegmentROI to get physical coordinates
+         and the underlying curve for curve-clipped fill)
+        roi_index: 0-based ROI index used to pick the cycling fill color for
+         signal ROIs (so several ROIs on the same signal are visually
+         distinguishable).
     """
     # Delayed import
     # pylint: disable=import-outside-toplevel
@@ -272,9 +305,42 @@ def _add_single_roi_to_axes(ax: Axes, roi, obj=None) -> None:
             va="bottom",
         )
     elif roi_class == "SegmentROI" and obj is not None:
-        # Signal ROI: X interval
+        # Signal ROI: X interval, filled along the signal curve with a
+        # baseline at y=0 (mirrors DataLab's curve-clipped ROI rendering).
         x0, x1 = roi.get_physical_coords(obj)
-        ax.axvspan(x0, x1, alpha=0.2, color="red", label=roi_label)
+        color = roi_color_for_index(roi_index)
+        x_arr = np.asarray(getattr(obj, "x", None), dtype=float)
+        y_arr = np.asarray(getattr(obj, "y", None), dtype=float)
+        if x_arr.size >= 2 and y_arr.size == x_arr.size:
+            finite = np.isfinite(x_arr) & np.isfinite(y_arr)
+            x_arr = x_arr[finite]
+            y_arr = y_arr[finite]
+        if x_arr.size >= 2 and y_arr.size == x_arr.size:
+            order = np.argsort(x_arr)
+            x_arr = x_arr[order]
+            y_arr = y_arr[order]
+            x_lo = max(float(x_arr[0]), min(x0, x1))
+            x_hi = min(float(x_arr[-1]), max(x0, x1))
+            if x_hi > x_lo:
+                mask = (x_arr >= x_lo) & (x_arr <= x_hi)
+                xs_in = x_arr[mask]
+                ys_in = y_arr[mask]
+                y_left = float(np.interp(x_lo, x_arr, y_arr))
+                y_right = float(np.interp(x_hi, x_arr, y_arr))
+                xs = np.concatenate(([x_lo], xs_in, [x_hi]))
+                ys = np.concatenate(([y_left], ys_in, [y_right]))
+                ax.fill_between(
+                    xs,
+                    ys,
+                    0.0,
+                    color=color,
+                    alpha=ROI_FILL_ALPHA,
+                    linewidth=0,
+                    label=roi_label,
+                )
+                return
+        # Fallback: full-height vertical strip when curve data is unusable
+        ax.axvspan(x0, x1, color=color, alpha=ROI_FILL_ALPHA, label=roi_label)
 
 
 def _add_geometry_to_axes(ax: Axes, result) -> None:
@@ -583,8 +649,8 @@ class MplPlotResult:
 
         # Show ROIs
         if self._show_roi and hasattr(obj, "roi") and obj.roi:
-            for roi in obj.roi:
-                _add_single_roi_to_axes(ax, roi, obj)
+            for roi_idx, roi in enumerate(obj.roi):
+                _add_single_roi_to_axes(ax, roi, obj, roi_index=roi_idx)
 
         # Auto-extract and display geometry/table results from object metadata
         if self._show_results:
@@ -689,8 +755,8 @@ class MplPlotResult:
 
         # Show ROIs
         if self._show_roi and hasattr(obj, "roi") and obj.roi:
-            for roi in obj.roi:
-                _add_single_roi_to_axes(ax, roi, obj)
+            for roi_idx, roi in enumerate(obj.roi):
+                _add_single_roi_to_axes(ax, roi, obj, roi_index=roi_idx)
 
         # Overlay geometry/table results (explicit or from metadata)
         if self._show_results:
@@ -1235,8 +1301,8 @@ class MplMultiImageResult:
 
             # Overlay ROIs
             if self._show_roi and is_image_obj and hasattr(img, "roi") and img.roi:
-                for roi in img.roi:
-                    _add_single_roi_to_axes(ax, roi, img)
+                for roi_idx, roi in enumerate(img.roi):
+                    _add_single_roi_to_axes(ax, roi, img, roi_index=roi_idx)
 
             # Collect and display geometry/table results if enabled
             if self._show_results:
