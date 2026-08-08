@@ -48,6 +48,11 @@ import uuid
 from typing import TYPE_CHECKING
 
 import numpy as np
+from sigima.viz.plotly_spec import (
+    build_geometry_overlay,
+    build_image_roi_overlay,
+    build_signal_roi_overlay,
+)
 
 # Reuse display classes and helper functions from the matplotlib plotter
 from datalab_kernel.plotter import (
@@ -328,103 +333,42 @@ def _add_result_annotation(fig: go.Figure, text: str, row=None, col=None) -> Non
     )
 
 
-def _roi_annotation_text(roi, index: int) -> str:
-    """Return annotation text for an ROI shape.
-
-    Uses the ROI's *title* attribute when set, otherwise falls back to
-    ``"ROI <index>"``.
-
-    Args:
-        roi: Single ROI object (SegmentROI, RectangularROI, CircularROI, etc.)
-        index: 0-based ROI index (used for fallback label)
-
-    Returns:
-        Annotation text string
-    """
-    title = getattr(roi, "title", "")
-    return title if title else f"ROI {index + 1}"
+def _add_plotly_overlay(
+    fig: go.Figure,
+    overlay: dict[str, list[dict]],
+    row: int | None = None,
+    col: int | None = None,
+) -> None:
+    """Materialize a Sigima Plotly overlay in a Kernel-owned figure."""
+    placement = {"row": row, "col": col} if row is not None and col is not None else {}
+    for trace in overlay["traces"]:
+        fig.add_trace(trace, **placement)
+    for shape in overlay["shapes"]:
+        shape_spec = dict(shape)
+        if placement:
+            if shape_spec.get("xref") == "paper":
+                shape_spec["xref"] = "x domain"
+            if shape_spec.get("yref") == "paper":
+                shape_spec["yref"] = "y domain"
+        fig.add_shape(shape_spec, **placement)
+    for annotation in overlay["annotations"]:
+        fig.add_annotation(annotation, **placement)
 
 
 def _add_signal_roi_shapes(fig: go.Figure, obj) -> None:
-    """Add Signal ROI overlays following the underlying curve.
-
-    For each :class:`SegmentROI` we draw a translucent area that follows the
-    signal between ``xmin`` and ``xmax``, with a baseline at ``y=0``. Each
-    ROI uses a different color picked from :data:`ROI_FILL_COLORS` (cycling)
-    so several ROIs on the same signal are visually distinguishable.
+    """Add Sigima's shared Signal ROI overlay to a Plotly figure.
 
     Args:
         fig: Plotly Figure object
         obj: SignalObj with ROI list
     """
-    if not hasattr(obj, "roi") or not obj.roi:
-        return
-    # pylint: disable=import-outside-toplevel
-    import plotly.graph_objects as go
-
-    x_arr = np.asarray(getattr(obj, "x", None), dtype=float)
-    y_arr = np.asarray(getattr(obj, "y", None), dtype=float)
-    have_curve = (
-        x_arr is not None
-        and y_arr is not None
-        and x_arr.size >= 2
-        and y_arr.size == x_arr.size
-    )
-    if have_curve:
-        finite = np.isfinite(x_arr) & np.isfinite(y_arr)
-        x_arr = x_arr[finite]
-        y_arr = y_arr[finite]
-        have_curve = x_arr.size >= 2
-        if have_curve:
-            order = np.argsort(x_arr)
-            x_arr = x_arr[order]
-            y_arr = y_arr[order]
-    for roi_idx, roi in enumerate(obj.roi):
-        roi_class = type(roi).__name__
-        if roi_class != "SegmentROI" or obj is None:
-            continue
-        x0, x1 = roi.get_physical_coords(obj)
-        fill_color = roi_color_for_index(roi_idx)
-        annotation = _roi_annotation_text(roi, roi_idx)
-        if have_curve:
-            x_lo = max(float(x_arr[0]), min(x0, x1))
-            x_hi = min(float(x_arr[-1]), max(x0, x1))
-            if x_hi > x_lo:
-                mask = (x_arr >= x_lo) & (x_arr <= x_hi)
-                xs_in = x_arr[mask]
-                ys_in = y_arr[mask]
-                y_left = float(np.interp(x_lo, x_arr, y_arr))
-                y_right = float(np.interp(x_hi, x_arr, y_arr))
-                xs = np.concatenate(([x_lo], xs_in, [x_hi]))
-                ys = np.concatenate(([y_left], ys_in, [y_right]))
-                fig.add_trace(
-                    go.Scatter(
-                        x=xs,
-                        y=ys,
-                        fill="tozeroy",
-                        fillcolor=fill_color,
-                        mode="none",
-                        name=annotation,
-                        hoverinfo="name",
-                        showlegend=False,
-                    )
-                )
-                continue
-        # Fallback: full-height vertical strip (curve unavailable or empty)
-        fig.add_vrect(
-            x0=x0,
-            x1=x1,
-            fillcolor=fill_color,
-            line={"color": fill_color, "width": 1},
-            annotation_text=annotation,
-            annotation_position="top left",
-        )
+    _add_plotly_overlay(fig, build_signal_roi_overlay(obj))
 
 
 def _add_image_roi_shapes(
     fig: go.Figure, obj, row: int | None = None, col: int | None = None
 ) -> None:
-    """Add ROI shapes for image objects.
+    """Add Sigima's shared Image ROI overlay to a Plotly figure.
 
     Args:
         fig: Plotly Figure object
@@ -432,72 +376,7 @@ def _add_image_roi_shapes(
         row: Subplot row (1-indexed) or None
         col: Subplot column (1-indexed) or None
     """
-    if not hasattr(obj, "roi") or not obj.roi:
-        return
-    for roi_idx, roi in enumerate(obj.roi):
-        roi_class = type(roi).__name__
-        shape_kwargs: dict = {}
-        if row is not None and col is not None:
-            shape_kwargs["row"] = row
-            shape_kwargs["col"] = col
-
-        roi_label = _roi_annotation_text(roi, roi_idx)
-        label_x: float | None = None
-        label_y: float | None = None
-
-        if roi_class == "RectangularROI":
-            x0, y0, dx, dy = roi.coords
-            fig.add_shape(
-                type="rect",
-                x0=x0,
-                y0=y0,
-                x1=x0 + dx,
-                y1=y0 + dy,
-                line={"color": "red", "width": 2},
-                **shape_kwargs,
-            )
-            label_x, label_y = x0 + dx / 2, y0
-        elif roi_class == "CircularROI":
-            xc, yc, r = roi.coords
-            fig.add_shape(
-                type="circle",
-                x0=xc - r,
-                y0=yc - r,
-                x1=xc + r,
-                y1=yc + r,
-                line={"color": "red", "width": 2},
-                **shape_kwargs,
-            )
-            label_x, label_y = xc, yc - r
-        elif roi_class == "PolygonalROI":
-            points = roi.coords.reshape(-1, 2)
-            # Close the polygon
-            xs = list(points[:, 0]) + [points[0, 0]]
-            ys = list(points[:, 1]) + [points[0, 1]]
-            path = "M " + " L ".join(f"{x},{y}" for x, y in zip(xs, ys)) + " Z"
-            fig.add_shape(
-                type="path",
-                path=path,
-                line={"color": "red", "width": 2},
-                **shape_kwargs,
-            )
-            label_x, label_y = float(points[:, 0].mean()), float(points[:, 1].min())
-
-        # Add ROI title annotation
-        if label_x is not None and label_y is not None:
-            ann_kwargs: dict = {}
-            if row is not None and col is not None:
-                ann_kwargs["row"] = row
-                ann_kwargs["col"] = col
-            fig.add_annotation(
-                x=label_x,
-                y=label_y,
-                text=roi_label,
-                showarrow=False,
-                font={"size": 10, "color": "red"},
-                yshift=-12,
-                **ann_kwargs,
-            )
+    _add_plotly_overlay(fig, build_image_roi_overlay(obj), row=row, col=col)
 
 
 def _add_geometry_traces(
@@ -506,14 +385,7 @@ def _add_geometry_traces(
     row: int | None = None,
     col: int | None = None,
 ) -> None:
-    """Add geometry result overlays to a Plotly figure.
-
-    Iterates over all rows in ``result.coords`` to draw each geometric shape.
-    Uses ``fig.add_shape()`` for rectangles, circles, ellipses, lines/segments
-    and ``fig.add_trace()`` for point/marker overlays.
-
-    A compact text label is placed near each shape showing the result title
-    and key value (e.g., ``"FWHM: 0.52"`` near a segment midpoint).
+    """Add Sigima's shared geometry result overlay to a Plotly figure.
 
     Args:
         fig: Plotly Figure object
@@ -521,172 +393,7 @@ def _add_geometry_traces(
         row: Subplot row (1-indexed) or None
         col: Subplot column (1-indexed) or None
     """
-    # Delayed import
-    # pylint: disable=import-outside-toplevel
-    from sigima.objects import KindShape
-
-    trace_kwargs: dict = {}
-    shape_kwargs: dict = {}
-    if row is not None and col is not None:
-        trace_kwargs["row"] = row
-        trace_kwargs["col"] = col
-        shape_kwargs["row"] = row
-        shape_kwargs["col"] = col
-
-    # Determine annotation axis references for subplots
-    ann_kwargs: dict = {}
-    if row is not None and col is not None:
-        subplot_idx = (
-            (row - 1) * fig._grid_ref[0].__len__() + col
-            if hasattr(fig, "_grid_ref")
-            else 1
-        )
-        ann_kwargs["xref"] = f"x{subplot_idx}" if subplot_idx > 1 else "x"
-        ann_kwargs["yref"] = f"y{subplot_idx}" if subplot_idx > 1 else "y"
-
-    label_title = getattr(result, "title", "")
-
-    def _fmt(v: float) -> str:
-        """Format a float value compactly."""
-        if abs(v) < 0.001 or abs(v) >= 10000:
-            return f"{v:.3g}"
-        return f"{v:.3f}"
-
-    def _add_label(x: float, y: float, text: str) -> None:
-        """Add a small text label near a geometry shape."""
-        fig.add_annotation(
-            x=x,
-            y=y,
-            text=text,
-            showarrow=False,
-            font={"family": "sans-serif", "size": 10, "color": "#333"},
-            bgcolor="rgba(255, 255, 200, 0.8)",
-            bordercolor="rgba(200, 200, 0, 0.6)",
-            borderwidth=1,
-            borderpad=3,
-            xanchor="left",
-            yanchor="bottom",
-            **ann_kwargs,
-        )
-
-    for coords in result.coords:
-        if result.kind == KindShape.POINT:
-            x0, y0 = coords
-            fig.add_trace(
-                _make_go().Scatter(
-                    x=[x0],
-                    y=[y0],
-                    mode="markers",
-                    marker={
-                        "color": "yellow",
-                        "size": 8,
-                        "line": {"color": "black", "width": 1},
-                    },
-                    showlegend=False,
-                ),
-                **trace_kwargs,
-            )
-            _add_label(x0, y0, f"{label_title}: ({_fmt(x0)}, {_fmt(y0)})")
-        elif result.kind == KindShape.MARKER:
-            x0, y0 = coords
-            # Crosshair lines
-            fig.add_hline(
-                y=y0,
-                line={"color": "yellow", "width": 1, "dash": "dash"},
-                opacity=0.7,
-                **shape_kwargs,
-            )
-            fig.add_vline(
-                x=x0,
-                line={"color": "yellow", "width": 1, "dash": "dash"},
-                opacity=0.7,
-                **shape_kwargs,
-            )
-            fig.add_trace(
-                _make_go().Scatter(
-                    x=[x0],
-                    y=[y0],
-                    mode="markers",
-                    marker={
-                        "symbol": "cross",
-                        "color": "yellow",
-                        "size": 12,
-                        "line": {"color": "yellow", "width": 2},
-                    },
-                    showlegend=False,
-                ),
-                **trace_kwargs,
-            )
-            _add_label(x0, y0, f"{label_title}: ({_fmt(x0)}, {_fmt(y0)})")
-        elif result.kind == KindShape.RECTANGLE:
-            x0, y0, dx, dy = coords
-            fig.add_shape(
-                type="rect",
-                x0=x0,
-                y0=y0,
-                x1=x0 + dx,
-                y1=y0 + dy,
-                line={"color": "yellow", "width": 2, "dash": "dash"},
-                **shape_kwargs,
-            )
-        elif result.kind == KindShape.CIRCLE:
-            xc, yc, r = coords
-            fig.add_shape(
-                type="circle",
-                x0=xc - r,
-                y0=yc - r,
-                x1=xc + r,
-                y1=yc + r,
-                line={"color": "yellow", "width": 2, "dash": "dash"},
-                **shape_kwargs,
-            )
-            _add_label(xc + r, yc, f"{label_title}: r={_fmt(r)}")
-        elif result.kind == KindShape.SEGMENT:
-            x0, y0, x1, y1 = coords
-            fig.add_shape(
-                type="line",
-                x0=x0,
-                y0=y0,
-                x1=x1,
-                y1=y1,
-                line={"color": "yellow", "width": 2, "dash": "dash"},
-                **shape_kwargs,
-            )
-            length = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
-            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-            _add_label(mx, my, f"{label_title}: {_fmt(length)}")
-        elif result.kind == KindShape.ELLIPSE:
-            xc, yc, a, b, theta = coords
-            # Generate parametric ellipse points
-            t = np.linspace(0, 2 * np.pi, 80)
-            cos_t = np.cos(theta)
-            sin_t = np.sin(theta)
-            ex = xc + a * np.cos(t) * cos_t - b * np.sin(t) * sin_t
-            ey = yc + a * np.cos(t) * sin_t + b * np.sin(t) * cos_t
-            fig.add_trace(
-                _make_go().Scatter(
-                    x=np.append(ex, ex[0]),
-                    y=np.append(ey, ey[0]),
-                    mode="lines",
-                    line={"color": "yellow", "width": 2, "dash": "dash"},
-                    showlegend=False,
-                ),
-                **trace_kwargs,
-            )
-        elif result.kind == KindShape.POLYGON:
-            xs = coords[::2]
-            ys = coords[1::2]
-            fig.add_trace(
-                _make_go().Scatter(
-                    x=np.append(xs, xs[0]),
-                    y=np.append(ys, ys[0]),
-                    mode="lines+markers",
-                    line={"color": "yellow", "width": 2, "dash": "dash"},
-                    marker={"color": "yellow", "size": 5},
-                    showlegend=False,
-                ),
-                **trace_kwargs,
-            )
+    _add_plotly_overlay(fig, build_geometry_overlay(result), row=row, col=col)
 
 
 def _make_go():

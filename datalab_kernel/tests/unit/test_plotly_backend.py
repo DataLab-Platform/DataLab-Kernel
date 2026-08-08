@@ -20,10 +20,16 @@ Pass ``--gui`` to open interactive HTML views in the browser.
 from __future__ import annotations
 
 import atexit
+import json
 
 import numpy as np
 import pytest
-from sigima import create_image, create_signal
+from sigima import GeometryResult, KindShape, create_image, create_signal
+from sigima.viz.plotly_spec import (
+    build_geometry_overlay,
+    build_image_roi_overlay,
+    build_signal_roi_overlay,
+)
 
 plotly = pytest.importorskip("plotly", reason="plotly is not installed")
 
@@ -286,6 +292,15 @@ class TestPlotlySignalRendering:
         _assert_valid_html(result._repr_html_())
         _show_if_gui(gui_mode, result)
 
+    def test_signal_roi_uses_sigima_overlay(self):
+        """Signal ROI traces match Sigima's shared Plotly JSON contract."""
+        sig = make_test_signal_with_roi()
+        figure_spec = json.loads(PlotlyPlotResult(sig)._build_figure().to_json())
+        overlay = build_signal_roi_overlay(sig)
+
+        assert figure_spec["data"][1:] == overlay["traces"]
+        assert figure_spec["layout"].get("shapes", []) == overlay["shapes"]
+
     def test_signal_sticks(self, gui_mode):
         """Signal with curvestyle='Sticks'."""
         sig = make_test_signal_sticks()
@@ -351,12 +366,55 @@ class TestPlotlyImageRendering:
         _assert_valid_html(result._repr_html_())
         _show_if_gui(gui_mode, result)
 
+    def test_image_roi_uses_sigima_overlay(self):
+        """Image ROI shapes match Sigima's shared Plotly JSON contract."""
+        img = make_test_image_with_roi()
+        figure_spec = json.loads(PlotlyPlotResult(img)._build_figure().to_json())
+        base_spec = json.loads(
+            PlotlyPlotResult(img, show_roi=False)._build_figure().to_json()
+        )
+        overlay = build_image_roi_overlay(img)
+
+        assert figure_spec["data"][len(base_spec["data"]) :] == overlay["traces"]
+        assert figure_spec["layout"]["shapes"] == overlay["shapes"]
+        assert figure_spec["layout"]["annotations"] == overlay["annotations"]
+
     def test_image_with_mask(self, gui_mode):
         """Image with mask overlay."""
         img = make_test_image_with_mask()
         result = PlotlyPlotResult(img, title="Masked Image")
         _assert_valid_html(result._repr_html_())
         _show_if_gui(gui_mode, result)
+
+    def test_geometry_uses_sigima_overlay(self):
+        """Every geometry kind matches Sigima's shared Plotly JSON contract."""
+        img = make_test_image("geometry", (32, 32))
+        results = [
+            GeometryResult.from_coords("Point", KindShape.POINT, [[1, 2]]),
+            GeometryResult.from_coords("Marker", KindShape.MARKER, [[2, 3]]),
+            GeometryResult.from_coords(
+                "Rectangle", KindShape.RECTANGLE, [[1, 1, 3, 2]]
+            ),
+            GeometryResult.from_coords("Circle", KindShape.CIRCLE, [[3, 3, 1]]),
+            GeometryResult.from_coords("Segment", KindShape.SEGMENT, [[0, 0, 4, 4]]),
+            GeometryResult.from_coords(
+                "Ellipse", KindShape.ELLIPSE, [[4, 4, 2, 1, 0.3]]
+            ),
+            GeometryResult.from_coords(
+                "Polygon", KindShape.POLYGON, [[0, 0, 2, 0, 1, 2]]
+            ),
+        ]
+        figure_spec = json.loads(
+            PlotlyPlotResult(img, results=results)._build_figure().to_json()
+        )
+        base_spec = json.loads(
+            PlotlyPlotResult(img, show_results=False)._build_figure().to_json()
+        )
+        overlay = build_geometry_overlay(results)
+
+        assert figure_spec["data"][len(base_spec["data"]) :] == overlay["traces"]
+        assert figure_spec["layout"]["shapes"] == overlay["shapes"]
+        assert figure_spec["layout"]["annotations"] == overlay["annotations"]
 
     def test_image_with_colormap(self, gui_mode):
         """Image with custom colormap metadata."""
