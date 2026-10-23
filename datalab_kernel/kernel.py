@@ -17,6 +17,8 @@ cannot be directly subclassed. Customization is done via:
 
 from __future__ import annotations
 
+import sys
+
 from datalab_kernel import __version__
 
 # Kernel metadata (used by kernel spec and for identification)
@@ -25,11 +27,11 @@ KERNEL_DISPLAY_NAME = "DataLab"
 KERNEL_IMPLEMENTATION = "datalab-kernel"
 KERNEL_IMPLEMENTATION_VERSION = __version__
 KERNEL_LANGUAGE = "python"
-KERNEL_LANGUAGE_VERSION = "3.9"
+KERNEL_LANGUAGE_VERSION = f"{sys.version_info.major}.{sys.version_info.minor}"
 
 KERNEL_LANGUAGE_INFO = {
     "name": "python",
-    "version": "3.9",
+    "version": KERNEL_LANGUAGE_VERSION,
     "mimetype": "text/x-python",
     "codemirror_mode": {"name": "ipython", "version": 3},
     "pygments_lexer": "ipython3",
@@ -79,8 +81,6 @@ def launch_kernel():
 
     It launches xeus-python with the DataLab startup configuration.
     """
-    import sys
-
     # Import and launch xeus-python
     try:
         # xeus-python provides an extension module for launching

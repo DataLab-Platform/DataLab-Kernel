@@ -157,7 +157,7 @@ def _add_table_results_to_axes(
 
         # Format each row (typically just one row for statistics)
         for row in data:
-            for header, value in zip(headers, row):
+            for header, value in zip(headers, row, strict=False):
                 # Format numeric values
                 if isinstance(value, float):
                     if abs(value) < 0.001 or abs(value) >= 10000:
@@ -184,7 +184,7 @@ def _add_table_results_to_axes(
                 coords = (
                     geometry.coords[0] if geometry.coords.ndim > 1 else geometry.coords
                 )
-                for label, value in zip(coord_labels, coords):
+                for label, value in zip(coord_labels, coords, strict=False):
                     if isinstance(value, float):
                         if abs(value) < 0.001 or abs(value) >= 10000:
                             formatted = f"{value:.3g}"
@@ -1187,7 +1187,7 @@ class MplMultiImageResult:
         all_geo_results: list = []
 
         for idx, (ax, img, img_title, result) in enumerate(
-            zip(axes_flat, self._objs, titles, results_list)
+            zip(axes_flat, self._objs, titles, results_list, strict=False)
         ):
             obj_type = type(img).__name__
 
