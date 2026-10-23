@@ -1,5 +1,10 @@
 # Version 0.2 #
 
+## Unreleased ##
+
+* Python 3.10 or later is now required. Python 3.9 users must keep an earlier compatible release.
+* Kernel language information now reports the Python version actually running the kernel, rather than always announcing Python 3.9.
+
 ## DataLab-Kernel Version 0.2.11 (2026-02-15) ##
 
 ### 🛠️ Bug Fixes since version 0.2.10 ###

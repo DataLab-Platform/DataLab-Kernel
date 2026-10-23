@@ -12,6 +12,7 @@ Tests kernel registration, startup, and namespace initialization.
 from __future__ import annotations
 
 import json
+import sys
 
 import pytest
 
@@ -76,6 +77,7 @@ class TestKernelModule:
             KERNEL_IMPLEMENTATION,
             KERNEL_LANGUAGE,
             KERNEL_LANGUAGE_INFO,
+            KERNEL_LANGUAGE_VERSION,
         )
 
         assert KERNEL_IMPLEMENTATION == "datalab-kernel"
@@ -83,6 +85,9 @@ class TestKernelModule:
         assert KERNEL_DISPLAY_NAME == "DataLab"
         assert "xeus-python" in KERNEL_BANNER
         assert isinstance(KERNEL_LANGUAGE_INFO, dict)
+        expected_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        assert expected_version == KERNEL_LANGUAGE_VERSION
+        assert KERNEL_LANGUAGE_INFO["version"] == KERNEL_LANGUAGE_VERSION
         assert isinstance(KERNEL_HELP_LINKS, list)
 
     def test_get_kernel_info_function(self):
@@ -99,6 +104,9 @@ class TestKernelModule:
         assert "help_links" in info
 
         assert info["implementation"] == "datalab-kernel"
+        assert info["language_info"]["version"] == (
+            f"{sys.version_info.major}.{sys.version_info.minor}"
+        )
 
 
 class TestStartupModule:

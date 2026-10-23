@@ -17,7 +17,6 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -26,7 +25,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 keywords = ["jupyter", "kernel", "datalab", "scientific", "data processing", "xeus"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "xeus-python>=0.17.0",
     "xeus-python-shell>=0.6.0",
@@ -90,7 +89,7 @@ markers = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]

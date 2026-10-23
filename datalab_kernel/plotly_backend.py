@@ -244,7 +244,7 @@ def _build_annotation_text(
         lines.append(f"<b>{table.title}:</b>")
         headers = list(table.headers)
         for row in table.data:
-            for header, value in zip(headers, row):
+            for header, value in zip(headers, row, strict=False):
                 if isinstance(value, float):
                     formatted = (
                         f"{value:.3g}"
@@ -264,7 +264,7 @@ def _build_annotation_text(
                 coords = (
                     geometry.coords[0] if geometry.coords.ndim > 1 else geometry.coords
                 )
-                for lbl, val in zip(coord_labels, coords):
+                for lbl, val in zip(coord_labels, coords, strict=False):
                     if isinstance(val, float):
                         formatted = (
                             f"{val:.3g}"
@@ -474,7 +474,11 @@ def _add_image_roi_shapes(
             # Close the polygon
             xs = list(points[:, 0]) + [points[0, 0]]
             ys = list(points[:, 1]) + [points[0, 1]]
-            path = "M " + " L ".join(f"{x},{y}" for x, y in zip(xs, ys)) + " Z"
+            path = (
+                "M "
+                + " L ".join(f"{x},{y}" for x, y in zip(xs, ys, strict=False))
+                + " Z"
+            )
             fig.add_shape(
                 type="path",
                 path=path,
@@ -1014,7 +1018,7 @@ class PlotlyPlotResult:
             # Build interleaved arrays: (x, baseline) -> (x, y) -> None gap
             xs: list = []
             ys: list = []
-            for xi, yi in zip(x, y):
+            for xi, yi in zip(x, y, strict=False):
                 xs.extend([xi, xi, None])
                 ys.extend([baseline, yi, None])
             fig.add_trace(
@@ -1431,7 +1435,7 @@ class PlotlyMultiSignalResult:
                             baseline = float(obj.get_metadata_option("baseline"))
                     xs: list = []
                     ys: list = []
-                    for xi, yi in zip(x, y):
+                    for xi, yi in zip(x, y, strict=False):
                         xs.extend([xi, xi, None])
                         ys.extend([baseline, yi, None])
                     fig.add_trace(
@@ -1770,7 +1774,9 @@ class PlotlyMultiImageResult:
         all_tbl_results: list = []
         all_geo_results: list = []
 
-        for idx, (img, result) in enumerate(zip(self._objs, results_list)):
+        for idx, (img, result) in enumerate(
+            zip(self._objs, results_list, strict=False)
+        ):
             row = idx // ncols + 1
             col = idx % ncols + 1
 

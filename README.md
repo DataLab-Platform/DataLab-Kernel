@@ -185,6 +185,7 @@ DataLab-Kernel uses **xeus-python** as its backend, which provides:
 
 The kernel requires:
 
+- Python 3.10 or later
 - `xeus-python>=0.17.0` - The xeus-based Python kernel
 - `xeus-python-shell>=0.6.0` - Python shell utilities for xeus-python
 - `sigima>=1.0` - Scientific signal and image processing
