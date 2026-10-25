@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from sigima import ImageObj, SignalObj
 
+from datalab_kernel.backends.h5coords import load_image_coords, save_image_coords
 from datalab_kernel.workspace import WorkspaceBackend
 
 if TYPE_CHECKING:
@@ -166,11 +167,7 @@ class StandaloneBackend(WorkspaceBackend):
             # Save image data
             grp.create_dataset("data", data=obj.data)
             # Save coordinate info
-            for attr in ("x0", "y0", "dx", "dy"):
-                if hasattr(obj, attr):
-                    val = getattr(obj, attr)
-                    if val is not None:
-                        grp.attrs[attr] = val
+            save_image_coords(grp, obj)
             # Save metadata
             if hasattr(obj, "title") and obj.title:
                 grp.attrs["title"] = obj.title
@@ -253,9 +250,7 @@ class StandaloneBackend(WorkspaceBackend):
         obj.data = data
         obj.title = grp.attrs.get("title", name)
 
-        for attr in ("x0", "y0", "dx", "dy"):
-            if attr in grp.attrs:
-                setattr(obj, attr, float(grp.attrs[attr]))
+        load_image_coords(grp, obj)
 
         if "xlabel" in grp.attrs:
             obj.xlabel = grp.attrs["xlabel"]
