@@ -18,7 +18,11 @@ import numpy as np
 import pytest
 
 from datalab_kernel.backends import StandaloneBackend
-from datalab_kernel.tests.data import make_test_image, make_test_signal
+from datalab_kernel.tests.data import (
+    make_test_image,
+    make_test_image_nonuniform,
+    make_test_signal,
+)
 from datalab_kernel.workspace import Workspace
 
 
@@ -127,6 +131,78 @@ class TestWorkspaceSaveLoadRoundtrip:
             assert hasattr(loaded, "data")
             assert loaded.data.shape == image.data.shape
             np.testing.assert_array_almost_equal(loaded.data, image.data)
+
+    def test_workspace_save_load_roundtrip_image_coordinates(self):
+        """Save then load preserves uniform and non-uniform image coordinates."""
+        workspace = Workspace(backend=StandaloneBackend())
+        uniform = make_test_image("uniform", shape=(16, 32))
+        uniform.set_uniform_coords(dx=0.5, dy=0.25, x0=10.0, y0=-2.0)
+        nonuniform = make_test_image_nonuniform("nonuniform")
+        workspace.add("uniform", uniform)
+        workspace.add("nonuniform", nonuniform)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "test.h5")
+            workspace.save(filepath)
+
+            workspace2 = Workspace(backend=StandaloneBackend())
+            workspace2.load(filepath)
+
+            loaded = workspace2.get("uniform")
+            assert loaded.is_uniform_coords
+            assert (loaded.x0, loaded.y0, loaded.dx, loaded.dy) == (
+                10.0,
+                -2.0,
+                0.5,
+                0.25,
+            )
+            loaded = workspace2.get("nonuniform")
+            assert not loaded.is_uniform_coords
+            np.testing.assert_array_equal(loaded.xcoords, nonuniform.xcoords)
+            np.testing.assert_array_equal(loaded.ycoords, nonuniform.ycoords)
+
+    def test_workspace_load_image_without_coordinate_flag(self):
+        """Images of files written by earlier versions have uniform coordinates."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "legacy.h5")
+            with h5py.File(filepath, "w") as f:
+                grp = f.create_group("img")
+                grp.attrs["type"] = "ImageObj"
+                grp.create_dataset("data", data=np.zeros((3, 4)))
+                for attr, value in {
+                    "x0": 1.0,
+                    "y0": 2.0,
+                    "dx": 0.5,
+                    "dy": 0.25,
+                }.items():
+                    grp.attrs[attr] = value
+
+            workspace = Workspace(backend=StandaloneBackend())
+            workspace.load(filepath)
+
+            loaded = workspace.get("img")
+            assert loaded.is_uniform_coords
+            assert (loaded.x0, loaded.y0, loaded.dx, loaded.dy) == (1.0, 2.0, 0.5, 0.25)
+
+    def test_workspace_load_image_with_invalid_coordinates(self):
+        """Non-uniform coordinates that do not match the image are rejected."""
+        import h5py
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = os.path.join(tmpdir, "invalid.h5")
+            with h5py.File(filepath, "w") as f:
+                grp = f.create_group("img")
+                grp.attrs["type"] = "ImageObj"
+                grp.attrs["is_uniform_coords"] = False
+                grp.create_dataset("data", data=np.zeros((3, 4)))
+                grp.create_dataset("xcoords", data=np.arange(3.0))
+                grp.create_dataset("ycoords", data=np.arange(3.0))
+
+            workspace = Workspace(backend=StandaloneBackend())
+            with pytest.raises(ValueError, match="do not match image shape"):
+                workspace.load(filepath)
 
     def test_workspace_save_load_roundtrip_multiple(self):
         """Save then load preserves all objects."""

@@ -11,9 +11,11 @@ Unit tests for the WebApiBackend and NPZ serialization.
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
 
+import h5py
 import numpy as np
 import pytest
 from sigima import ImageObj, SignalObj
@@ -23,12 +25,14 @@ from datalab_kernel.serialization_npz import (
     deserialize_object_from_npz,
     serialize_object_to_npz,
 )
+from datalab_kernel.tests.data import make_test_image, make_test_image_nonuniform
 
 
 class TestNPZSerialization:
     """Tests for NPZ serialization module."""
 
-    def test_signal_round_trip(self):
+    @pytest.mark.parametrize("compress", [False, True])
+    def test_signal_round_trip(self, compress):
         """Test serializing and deserializing a SignalObj."""
         # Create a signal
         x = np.linspace(0, 10, 100)
@@ -40,9 +44,10 @@ class TestNPZSerialization:
         obj.ylabel = "Amplitude"
         obj.xunit = "s"
         obj.yunit = "V"
+        obj.metadata["acquisition"] = {"sample": "signal", "gain": 2.5}
 
         # Serialize
-        data = serialize_object_to_npz(obj)
+        data = serialize_object_to_npz(obj, compress=compress)
         assert isinstance(data, bytes)
         assert len(data) > 0
 
@@ -65,6 +70,9 @@ class TestNPZSerialization:
         assert result.ylabel == "Amplitude"
         assert result.xunit == "s"
         assert result.yunit == "V"
+        assert result.metadata["acquisition"] == obj.metadata["acquisition"]
+        assert result.dx is None
+        assert result.dy is None
 
     def test_signal_with_uncertainties(self):
         """Test signal with dx/dy uncertainties."""
@@ -83,7 +91,8 @@ class TestNPZSerialization:
         np.testing.assert_array_equal(result.dx, dx)
         np.testing.assert_array_equal(result.dy, dy)
 
-    def test_image_round_trip(self):
+    @pytest.mark.parametrize("compress", [False, True])
+    def test_image_round_trip(self, compress):
         """Test serializing and deserializing an ImageObj."""
         # Create an image
         data = np.random.rand(128, 128).astype(np.float32)
@@ -93,13 +102,17 @@ class TestNPZSerialization:
         obj.xlabel = "X"
         obj.ylabel = "Y"
         obj.zlabel = "Intensity"
+        obj.xunit = "mm"
+        obj.yunit = "mm"
+        obj.zunit = "counts"
+        obj.metadata["acquisition"] = {"sample": "image", "gain": 2.5}
         obj.x0 = 10.0
         obj.y0 = 20.0
         obj.dx = 0.5
         obj.dy = 0.5
 
         # Serialize
-        npz_data = serialize_object_to_npz(obj)
+        npz_data = serialize_object_to_npz(obj, compress=compress)
         assert isinstance(npz_data, bytes)
 
         # Verify structure
@@ -115,6 +128,13 @@ class TestNPZSerialization:
         assert type(result).__name__ == "ImageObj"
         np.testing.assert_array_equal(result.data, data)
         assert result.title == "Test Image"
+        assert result.xlabel == "X"
+        assert result.ylabel == "Y"
+        assert result.zlabel == "Intensity"
+        assert result.xunit == "mm"
+        assert result.yunit == "mm"
+        assert result.zunit == "counts"
+        assert result.metadata["acquisition"] == obj.metadata["acquisition"]
         assert result.x0 == 10.0
         assert result.y0 == 20.0
         assert result.dx == 0.5
@@ -133,6 +153,80 @@ class TestNPZSerialization:
             assert result.data.dtype == dtype, (
                 f"Expected {dtype}, got {result.data.dtype}"
             )
+
+    @pytest.mark.parametrize("compress", [False, True])
+    def test_image_nonuniform_round_trip(self, compress):
+        """Non-uniform coordinates are kept, in the same layout as DataLab."""
+        obj = make_test_image_nonuniform()
+
+        npz_data = serialize_object_to_npz(obj, compress=compress)
+        with zipfile.ZipFile(io.BytesIO(npz_data), "r") as zf:
+            assert {"xcoords.npy", "ycoords.npy"} <= set(zf.namelist())
+            metadata = json.loads(zf.read("metadata.json"))
+        assert metadata["is_uniform_coords"] is False
+
+        result = deserialize_object_from_npz(npz_data)
+        assert not result.is_uniform_coords
+        np.testing.assert_array_equal(result.xcoords, obj.xcoords)
+        np.testing.assert_array_equal(result.ycoords, obj.ycoords)
+        np.testing.assert_array_equal(result.data, obj.data)
+
+    def test_image_uniform_has_no_coordinate_arrays(self):
+        """Uniform coordinates are given by x0, y0, dx and dy only."""
+        obj = make_test_image("uniform")
+        obj.set_uniform_coords(dx=0.5, dy=0.25, x0=10.0, y0=-2.0)
+        npz_data = serialize_object_to_npz(obj)
+        with zipfile.ZipFile(io.BytesIO(npz_data), "r") as zf:
+            assert "xcoords.npy" not in zf.namelist()
+            assert "ycoords.npy" not in zf.namelist()
+            metadata = json.loads(zf.read("metadata.json"))
+        assert metadata["is_uniform_coords"] is True
+        result = deserialize_object_from_npz(npz_data)
+        assert result.is_uniform_coords
+        assert (result.x0, result.y0, result.dx, result.dy) == (
+            obj.x0,
+            obj.y0,
+            obj.dx,
+            obj.dy,
+        )
+
+    def test_image_archive_without_coordinate_flag(self):
+        """Archives written by earlier versions have uniform coordinates."""
+        metadata = {"type": "image", "x0": 1.0, "y0": 2.0, "dx": 0.5, "dy": 0.25}
+        npz_data = _make_image_archive(np.zeros((3, 4)), metadata)
+        result = deserialize_object_from_npz(npz_data)
+        assert result.is_uniform_coords
+        assert (result.x0, result.y0, result.dx, result.dy) == (1.0, 2.0, 0.5, 0.25)
+
+    @pytest.mark.parametrize(
+        "arrays",
+        [
+            {},
+            {"xcoords.npy": np.arange(4.0)},
+            {"xcoords.npy": np.arange(3.0), "ycoords.npy": np.arange(3.0)},
+        ],
+        ids=["missing", "missing_y", "wrong_shape"],
+    )
+    def test_image_invalid_nonuniform_archive(self, arrays):
+        """Missing or mismatched non-uniform coordinates are rejected."""
+        metadata = {"type": "image", "is_uniform_coords": False}
+        npz_data = _make_image_archive(np.zeros((3, 4)), metadata, arrays)
+        with pytest.raises(ValueError, match="Invalid image NPZ"):
+            deserialize_object_from_npz(npz_data)
+
+
+def _make_image_archive(
+    data: np.ndarray, metadata: dict, arrays: dict[str, np.ndarray] | None = None
+) -> bytes:
+    """Build an image NPZ archive by hand, as written by DataLab."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        for name, array in {"data.npy": data, **(arrays or {})}.items():
+            array_buffer = io.BytesIO()
+            np.save(array_buffer, array, allow_pickle=False)
+            zf.writestr(name, array_buffer.getvalue())
+        zf.writestr("metadata.json", json.dumps(metadata))
+    return buffer.getvalue()
 
 
 class TestWebApiBackendHelpers:
@@ -183,6 +277,32 @@ class TestWebApiBackendHelpers:
         for case in invalid_cases:
             match = re.match(pattern, case.lower())
             assert match is None, f"Should not match: {case}"
+
+    @pytest.mark.parametrize("nonuniform", [False, True])
+    def test_hdf5_group_keeps_image_coordinates(self, tmp_path, nonuniform):
+        """Saving a workspace locally keeps uniform and non-uniform coordinates."""
+        backend = WebApiBackend.__new__(WebApiBackend)
+        if nonuniform:
+            obj = make_test_image_nonuniform()
+        else:
+            obj = make_test_image("uniform")
+            obj.set_uniform_coords(dx=0.5, dy=0.25, x0=10.0, y0=-2.0)
+        filepath = tmp_path / "workspace.h5"
+        # pylint: disable=protected-access
+        with h5py.File(filepath, "w") as f:
+            backend._save_object_to_group(f.create_group("img"), obj)
+        with h5py.File(filepath, "r") as f:
+            result = backend._load_object_from_group(f["img"], "img")
+        assert result.is_uniform_coords is not nonuniform
+        np.testing.assert_array_equal(result.xcoords, obj.xcoords)
+        np.testing.assert_array_equal(result.ycoords, obj.ycoords)
+        if not nonuniform:
+            assert (result.x0, result.y0, result.dx, result.dy) == (
+                10.0,
+                -2.0,
+                0.5,
+                0.25,
+            )
 
 
 class TestWorkspaceBackendSelection:
@@ -302,6 +422,29 @@ class TestWebApiBackendIntegration:
 
         # Cleanup
         webapi_backend.remove("webapi_test_image")
+
+    def test_add_and_get_nonuniform_image(self, webapi_backend):
+        """Non-uniform coordinates survive a round trip through DataLab."""
+        # pylint: disable=protected-access
+        version = webapi_backend._client.get("/api/v1/status").json()["version"]
+        if _version_tuple(version) < (1, 4, 0):
+            pytest.skip(f"DataLab {version} does not transfer non-uniform coordinates")
+        obj = make_test_image_nonuniform("webapi_test_nonuniform")
+
+        webapi_backend.add("webapi_test_nonuniform", obj, overwrite=True)
+        retrieved = webapi_backend.get("webapi_test_nonuniform")
+
+        assert not retrieved.is_uniform_coords
+        np.testing.assert_array_equal(retrieved.xcoords, obj.xcoords)
+        np.testing.assert_array_equal(retrieved.ycoords, obj.ycoords)
+        np.testing.assert_array_equal(retrieved.data, obj.data)
+
+        webapi_backend.remove("webapi_test_nonuniform")
+
+
+def _version_tuple(version: str) -> tuple[int, ...]:
+    """Return the numeric release part of a version string (e.g. (1, 4, 0))."""
+    return tuple(int(part) for part in re.findall(r"\d+", version)[:3])
 
 
 @pytest.mark.webapi

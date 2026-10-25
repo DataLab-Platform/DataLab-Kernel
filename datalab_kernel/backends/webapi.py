@@ -41,6 +41,7 @@ import h5py
 import numpy as np
 from sigima import ImageObj, SignalObj
 
+from datalab_kernel.backends.h5coords import load_image_coords, save_image_coords
 from datalab_kernel.backends.pyfetch import (
     HttpError,
     HttpResponse,
@@ -463,11 +464,7 @@ class WebApiBackend:
             grp.create_dataset("data", data=obj.data)
             if hasattr(obj, "title") and obj.title:
                 grp.attrs["title"] = obj.title
-            for attr in ("x0", "y0", "dx", "dy"):
-                if hasattr(obj, attr):
-                    val = getattr(obj, attr)
-                    if val is not None:
-                        grp.attrs[attr] = val
+            save_image_coords(grp, obj)
 
     def load(self, filepath: str) -> None:
         """Load workspace from HDF5 file.
@@ -507,9 +504,7 @@ class WebApiBackend:
             obj = ImageObj()
             obj.data = data
             obj.title = grp.attrs.get("title", name)
-            for attr in ("x0", "y0", "dx", "dy"):
-                if attr in grp.attrs:
-                    setattr(obj, attr, float(grp.attrs[attr]))
+            load_image_coords(grp, obj)
             return obj
 
         return None
