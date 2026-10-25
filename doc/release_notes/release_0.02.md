@@ -5,6 +5,7 @@
 * Python 3.10 or later is now required. Python 3.9 users must keep an earlier compatible release.
 * Kernel language information now reports the Python version actually running the kernel, rather than always announcing Python 3.9.
 * Fixed images with non-uniform coordinates losing their coordinates when transferred to or from DataLab, or when the workspace was saved to and loaded from an HDF5 file: they came back with uniform coordinates equal to the pixel indices, so that their physical positions were wrong. The pixel center coordinates are now kept, in the same NPZ format as DataLab (1.4.0 or later); data and files written by earlier versions are still read with uniform coordinates.
+* Sigima 1.4.0 or later is now required: objects are transferred to and from DataLab with the NPZ serialization of Sigima, shared with DataLab, instead of a copy of it. Objects whose metadata hold arrays in lists (for example images with regions of interest) can now be transferred: they raised an error.
 
 ## DataLab-Kernel Version 0.2.11 (2026-02-15) ##
 

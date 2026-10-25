@@ -25,7 +25,11 @@ from datalab_kernel.serialization_npz import (
     deserialize_object_from_npz,
     serialize_object_to_npz,
 )
-from datalab_kernel.tests.data import make_test_image, make_test_image_nonuniform
+from datalab_kernel.tests.data import (
+    make_test_image,
+    make_test_image_nonuniform,
+    make_test_image_rich,
+)
 
 
 class TestNPZSerialization:
@@ -153,6 +157,18 @@ class TestNPZSerialization:
             assert result.data.dtype == dtype, (
                 f"Expected {dtype}, got {result.data.dtype}"
             )
+
+    def test_image_rich_metadata_round_trip(self):
+        """Metadata holding NumPy arrays nested in lists (ROIs) are transferred."""
+        obj = make_test_image_rich()
+        result = deserialize_object_from_npz(serialize_object_to_npz(obj))
+        np.testing.assert_array_equal(result.data, obj.data)
+        assert set(result.metadata) == set(obj.metadata)
+        assert len(result.roi.single_rois) == len(obj.roi.single_rois)
+        rois = zip(result.roi.single_rois, obj.roi.single_rois, strict=True)
+        for roi, expected in rois:
+            np.testing.assert_array_equal(roi.coords, expected.coords)
+            assert roi.title == expected.title
 
     @pytest.mark.parametrize("compress", [False, True])
     def test_image_nonuniform_round_trip(self, compress):
