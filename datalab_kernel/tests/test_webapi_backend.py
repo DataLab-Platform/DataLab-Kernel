@@ -19,6 +19,10 @@ import h5py
 import numpy as np
 import pytest
 from sigima import ImageObj, SignalObj
+from sigima.io import (
+    deserialize_object_from_npz as sigima_deserialize_object_from_npz,
+)
+from sigima.io import serialize_object_to_npz as sigima_serialize_object_to_npz
 
 from datalab_kernel.backends.webapi import WebApiBackend
 from datalab_kernel.serialization_npz import (
@@ -29,6 +33,7 @@ from datalab_kernel.tests.data import (
     make_test_image,
     make_test_image_nonuniform,
     make_test_image_rich,
+    make_test_signal_with_roi,
 )
 
 
@@ -167,6 +172,51 @@ class TestNPZSerialization:
         assert len(result.roi.single_rois) == len(obj.roi.single_rois)
         rois = zip(result.roi.single_rois, obj.roi.single_rois, strict=True)
         for roi, expected in rois:
+            np.testing.assert_array_equal(roi.coords, expected.coords)
+            assert roi.title == expected.title
+
+    @pytest.mark.parametrize(
+        "make_object", [make_test_image_rich, make_test_signal_with_roi]
+    )
+    @pytest.mark.parametrize("compress", [False, True])
+    @pytest.mark.parametrize("kernel_writer", [False, True])
+    def test_rich_metadata_interoperates_with_sigima(
+        self, make_object, compress, kernel_writer
+    ):
+        """Both public APIs exchange ROI data and nested NumPy metadata."""
+        obj = make_object()
+        obj.metadata["acquisition"] = {
+            "frames": np.int64(12),
+            "valid": np.bool_(True),
+            "levels": [np.array([1, 2], dtype=np.int16), np.float32(0.5)],
+        }
+        serializer = (
+            serialize_object_to_npz if kernel_writer else sigima_serialize_object_to_npz
+        )
+        deserializer = (
+            sigima_deserialize_object_from_npz
+            if kernel_writer
+            else deserialize_object_from_npz
+        )
+
+        result = deserializer(serializer(obj, compress=compress))
+
+        assert result.metadata["acquisition"] == {
+            "frames": 12,
+            "valid": True,
+            "levels": [[1, 2], 0.5],
+        }
+        if isinstance(obj, ImageObj):
+            assert isinstance(result, ImageObj)
+            np.testing.assert_array_equal(result.data, obj.data)
+        else:
+            assert isinstance(result, SignalObj)
+            np.testing.assert_array_equal(result.x, obj.x)
+            np.testing.assert_array_equal(result.y, obj.y)
+        assert len(result.roi.single_rois) == len(obj.roi.single_rois)
+        for roi, expected in zip(
+            result.roi.single_rois, obj.roi.single_rois, strict=True
+        ):
             np.testing.assert_array_equal(roi.coords, expected.coords)
             assert roi.title == expected.title
 
@@ -438,6 +488,50 @@ class TestWebApiBackendIntegration:
 
         # Cleanup
         webapi_backend.remove("webapi_test_image")
+
+    @pytest.mark.parametrize(
+        "make_object", [make_test_image_rich, make_test_signal_with_roi]
+    )
+    @pytest.mark.parametrize("compress", [False, True])
+    def test_round_trip_roi_and_numpy_metadata(
+        self, webapi_backend, make_object, compress
+    ):
+        """Exchange real ROI and nested NumPy metadata with DataLab in both directions."""
+        obj = make_object("webapi_rich_object")
+        obj.metadata["acquisition"] = {
+            "frames": np.int64(12),
+            "valid": np.bool_(True),
+            "levels": [np.array([1, 2], dtype=np.int16), np.float32(0.5)],
+        }
+
+        webapi_backend.add(obj.title, obj)
+        retrieved = webapi_backend.get(obj.title, compress=compress)
+
+        assert retrieved.metadata["acquisition"] == {
+            "frames": 12,
+            "valid": True,
+            "levels": [[1, 2], 0.5],
+        }
+        assert type(retrieved) is type(obj)
+        if isinstance(obj, ImageObj):
+            assert isinstance(retrieved, ImageObj)
+            np.testing.assert_array_equal(retrieved.data, obj.data)
+            assert (retrieved.x0, retrieved.y0, retrieved.dx, retrieved.dy) == (
+                obj.x0,
+                obj.y0,
+                obj.dx,
+                obj.dy,
+            )
+        else:
+            assert isinstance(retrieved, SignalObj)
+            np.testing.assert_array_equal(retrieved.x, obj.x)
+            np.testing.assert_array_equal(retrieved.y, obj.y)
+        assert len(retrieved.roi.single_rois) == len(obj.roi.single_rois)
+        for roi, expected in zip(
+            retrieved.roi.single_rois, obj.roi.single_rois, strict=True
+        ):
+            np.testing.assert_array_equal(roi.coords, expected.coords)
+            assert roi.title == expected.title
 
     def test_add_and_get_nonuniform_image(self, webapi_backend):
         """Non-uniform coordinates survive a round trip through DataLab."""

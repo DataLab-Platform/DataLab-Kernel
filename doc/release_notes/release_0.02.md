@@ -4,7 +4,7 @@
 
 * Python 3.10 or later is now required. Python 3.9 users must keep an earlier compatible release.
 * Kernel language information now reports the Python version actually running the kernel, rather than always announcing Python 3.9.
-* Fixed images with non-uniform coordinates losing their coordinates when transferred to or from DataLab, or when the workspace was saved to and loaded from an HDF5 file: they came back with uniform coordinates equal to the pixel indices, so that their physical positions were wrong. The pixel center coordinates are now kept, in the same NPZ format as DataLab (1.4.0 or later); data and files written by earlier versions are still read with uniform coordinates.
+* Fixed images with non-uniform coordinates losing their coordinates when transferred to or from DataLab, or when the workspace was saved to and loaded from an HDF5 file: they came back with uniform coordinates equal to the pixel indices, so that their physical positions were wrong. The pixel center coordinates are now kept, in the same NPZ format as DataLab (1.4.0 or later); data and files written by earlier versions are still read with uniform coordinates. DataLab 1.1.0 still converts non-uniform axes to uniform coordinates during transfer, so use DataLab 1.4.0 or later to preserve them.
 * Fixed errors when transferring images with regions of interest, or other objects with NumPy values in their metadata, to or from DataLab.
 * Sigima 1.4.0 or later is required for transfers compatible with DataLab 1.4.
 * Tests: the live tests started with `--start-datalab` no longer fail with DataLab 1.4 or later, which quit right after starting because it did not get the instruction to stay open.
