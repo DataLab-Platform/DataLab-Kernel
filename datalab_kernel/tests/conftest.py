@@ -172,8 +172,11 @@ def _start_datalab():
 
     # Set environment variables for DataLab
     env = os.environ.copy()
-    # Prevent auto-quit and enable unattended mode
+    # Prevent auto-quit and enable unattended mode. DataLab 1.4 and later read the
+    # execution environment of SigimaX (SIGIMAX_DO_NOT_QUIT); earlier versions read
+    # DATALAB_DO_NOT_QUIT: set both so that DataLab stays open after starting.
     env["DATALAB_DO_NOT_QUIT"] = "1"
+    env["SIGIMAX_DO_NOT_QUIT"] = "1"
     env["GUIDATA_UNATTENDED"] = "1"
     # Auto-start WebAPI with known configuration
     env["DATALAB_WEBAPI_ENABLED"] = "1"
