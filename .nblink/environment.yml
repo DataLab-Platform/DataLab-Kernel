@@ -1,8 +1,27 @@
 name: datalab-environment
 channels:
-  - emscripten-forge
-  - conda-forge
+  - https://prefix.dev/emscripten-forge-3x
+  - https://prefix.dev/conda-forge
 dependencies:
+  # Compiled packages: only emscripten-forge provides WebAssembly builds.
   - xeus-python
-  - datalab-kernel
+  - numpy
+  - scipy
+  - scikit-image
+  - pandas
+  - pywavelets
+  - h5py
+  - matplotlib-base
+  # Pure-Python dependencies, also listed for tools installing pip packages
+  # without their dependencies (jupyterlite-xeus).
+  - guidata >=3.17
+  - httpx
+  - makefun
+  - packaging
+  - plotly
   - micropip
+  # The conda-forge Sigima package requires imagecodecs, which has no
+  # WebAssembly build; Sigima's PyPI metadata excludes it on Emscripten.
+  - pip:
+      - sigima
+      - datalab-kernel
