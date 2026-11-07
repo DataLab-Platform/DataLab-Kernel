@@ -85,6 +85,9 @@ class PyodideHttpClient:
         """Synchronous DELETE request."""
         return self._request("DELETE", path, **kwargs)
 
+    def close(self) -> None:
+        """Close the client; synchronous requests leave no resources to release."""
+
     @staticmethod
     def _arraybuffer_to_bytes(arraybuffer) -> bytes:
         """Convert a JavaScript ArrayBuffer to Python bytes efficiently.
@@ -225,6 +228,10 @@ class HttpxClientWrapper:
         """DELETE request."""
         response = self._client.delete(path, **kwargs)
         return self._wrap_response(response)
+
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+        self._client.close()
 
     def _wrap_response(self, response) -> HttpResponse:
         """Wrap httpx response in our unified type."""

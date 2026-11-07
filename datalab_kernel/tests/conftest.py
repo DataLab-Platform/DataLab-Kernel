@@ -456,6 +456,7 @@ def webapi_backend(request, auto_datalab):  # pylint: disable=W0621,W0613
     # Cleanup after test
     with contextlib.suppress(Exception):
         backend.clear()
+    backend.close()
 
 
 @pytest.fixture
