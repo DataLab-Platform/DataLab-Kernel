@@ -967,15 +967,15 @@
         "sha256": "7cee3082f9ccd2965e740d02898d552eb50a667c26a023eb84186240b9c0c267"
       }
     },
-    "datalab_kernel-0.2.11-py3-none-any.whl": {
+    "datalab_kernel-0.2.12-py3-none-any.whl": {
       "name": "datalab-kernel",
-      "version": "0.2.11",
-      "url": "https://files.pythonhosted.org/packages/50/35/7a173f07302f3d5b62ae0e2cf4804f6f20a1a4ce5acc567bfbc25a7749ed/datalab_kernel-0.2.11-py3-none-any.whl",
-      "size": 114932,
+      "version": "0.2.12",
+      "url": "https://files.pythonhosted.org/packages/3e/71/0047d4ba5059d33be17146119a62075ce00ef7dde564a4cc67ee158926bf/datalab_kernel-0.2.12-py3-none-any.whl",
+      "size": 121245,
       "registry": "PyPi",
       "hash": {
-        "md5": "6ba704d30d59fd9f468cfff07bb8885b",
-        "sha256": "1283d1c85712fd8cc813074186992cfcf1741fbbddfe2714d86fb364f9298100"
+        "md5": "44204bd464c9831b46f13f930402d524",
+        "sha256": "ac2bd9fcd2ffa7161319d02f6ff4af60229e0c17f429930ba5266f619f66dcdc"
       }
     }
   },
