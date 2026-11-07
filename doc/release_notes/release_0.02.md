@@ -1,13 +1,22 @@
 # Version 0.2 #
 
-## Unreleased ##
+## DataLab-Kernel Version 0.2.12 (2026-11-07) ##
+
+### 💥 Changes since version 0.2.11 ###
 
 * Python 3.10 or later is now required. Python 3.9 users must keep an earlier compatible release.
+* Sigima 1.4.0 or later is required for transfers compatible with DataLab 1.4.
+
+### 🛠️ Bug Fixes since version 0.2.11 ###
+
 * Kernel language information now reports the Python version actually running the kernel, rather than always announcing Python 3.9.
 * Fixed images with non-uniform coordinates losing their coordinates when transferred to or from DataLab, or when the workspace was saved to and loaded from an HDF5 file: they came back with uniform coordinates equal to the pixel indices, so that their physical positions were wrong. The pixel center coordinates are now kept, in the same NPZ format as DataLab (1.4.0 or later); data and files written by earlier versions are still read with uniform coordinates. DataLab 1.1.0 still converts non-uniform axes to uniform coordinates during transfer, so use DataLab 1.4.0 or later to preserve them.
 * Fixed errors when transferring images with regions of interest, or other objects with NumPy values in their metadata, to or from DataLab.
 * Fixed errors when closing a DataLab Web API connection, including when exiting a `with` block, in native Python and Pyodide.
-* Sigima 1.4.0 or later is required for transfers compatible with DataLab 1.4.
+
+### 🔧 Other changes since version 0.2.11 ###
+
+* JupyterLite: the documented environment now installs Sigima and DataLab-Kernel from PyPI, with their compiled dependencies from emscripten-forge. The conda-forge Sigima package requires `imagecodecs`, which is not available for WebAssembly, so a Conda-only environment cannot use Sigima 1.4.
 * Tests: the live tests started with `--start-datalab` no longer fail with DataLab 1.4 or later, which quit right after starting because it did not get the instruction to stay open.
 
 ## DataLab-Kernel Version 0.2.11 (2026-02-15) ##

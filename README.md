@@ -149,18 +149,32 @@ as an IPython extension instead.
 
 **1. Add to your `environment.yml`:**
 
+Compiled packages come from emscripten-forge, while Sigima and DataLab-Kernel are installed from PyPI: the conda-forge Sigima package requires `imagecodecs`, which is not available for WebAssembly.
+
 ```yaml
 name: xeus-python-kernel
 channels:
-  - https://repo.mamba.pm/emscripten-forge
-  - conda-forge
+  - https://prefix.dev/emscripten-forge-4x
+  - https://prefix.dev/conda-forge
 dependencies:
+  - xeus-python
   - numpy
-  - matplotlib
+  - scipy
+  - scikit-image
+  - pandas <3.1
+  - pywavelets
   - h5py
-  - datalab-kernel
-  - sigima
+  - matplotlib-base
+  - guidata >=3.17
+  - httpx
+  - makefun
+  - packaging
+  - pip:
+      - sigima
+      - datalab-kernel
 ```
+
+The pure-Python dependencies are also listed because some tools, such as `jupyterlite-xeus`, install `pip` packages without their dependencies. Version bounds follow Sigima's requirements. The [`.nblink/environment.yml`](https://github.com/DataLab-Platform/DataLab-Kernel/blob/main/.nblink/environment.yml) file used by the notebook.link examples above is a tested reference.
 
 **2. Load the extension in your notebook:**
 
