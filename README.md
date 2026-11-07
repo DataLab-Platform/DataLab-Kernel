@@ -149,7 +149,7 @@ as an IPython extension instead.
 
 **1. Add to your `environment.yml`:**
 
-Compiled packages come from emscripten-forge, while Sigima and DataLab-Kernel are installed from PyPI: the conda-forge Sigima package requires `imagecodecs`, which is not available for WebAssembly.
+Compiled packages come from emscripten-forge, while Sigima and DataLab-Kernel are installed from PyPI: the conda-forge Sigima package requires the Conda package `imagecodecs`, which emscripten-forge does not provide.
 
 ```yaml
 name: xeus-python-kernel

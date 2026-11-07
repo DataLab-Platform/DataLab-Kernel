@@ -3,7 +3,7 @@ channels:
   - https://prefix.dev/emscripten-forge-4x
   - https://prefix.dev/conda-forge
 dependencies:
-  # Compiled packages: only emscripten-forge provides WebAssembly builds.
+  # Compiled packages, taken from emscripten-forge for this runtime.
   - xeus-python
   - numpy
   - scipy
@@ -20,8 +20,8 @@ dependencies:
   - packaging
   - plotly
   - micropip
-  # The conda-forge Sigima package requires imagecodecs, which has no
-  # WebAssembly build; Sigima's PyPI metadata excludes it on Emscripten.
+  # The conda-forge Sigima package requires imagecodecs, which emscripten-forge
+  # does not provide; Sigima's PyPI metadata excludes it on Emscripten.
   - pip:
       - sigima
       - datalab-kernel

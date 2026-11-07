@@ -61,8 +61,8 @@ commands are not used. Instead, you load DataLab-Kernel as an IPython extension.
 
 Create or edit your ``environment.yml``. Compiled packages come from
 emscripten-forge, while Sigima and DataLab-Kernel are installed from PyPI:
-the conda-forge Sigima package requires ``imagecodecs``, which is not
-available for WebAssembly.
+the conda-forge Sigima package requires the Conda package ``imagecodecs``,
+which emscripten-forge does not provide.
 
 .. code-block:: yaml
 
