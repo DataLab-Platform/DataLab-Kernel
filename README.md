@@ -188,7 +188,7 @@ The kernel requires:
 - Python 3.10 or later
 - `xeus-python>=0.17.0` - The xeus-based Python kernel
 - `xeus-python-shell>=0.6.0` - Python shell utilities for xeus-python
-- `sigima>=1.0` - Scientific signal and image processing
+- `sigima>=1.4.0` - Scientific signal and image processing
 - `numpy>=1.22`, `h5py>=3.0`, `matplotlib>=3.5`
 
 Optional dependencies (via extras):

@@ -84,5 +84,5 @@ jobs:
     - name: Run standalone tests
       run: pytest --standalone-only -v --tb=long
 
-    - name: Run all tests
-      run: pytest -v --tb=long
+    - name: Run all tests with live DataLab
+      run: pytest --start-datalab -v --tb=long

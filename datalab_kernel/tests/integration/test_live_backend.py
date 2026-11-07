@@ -45,6 +45,7 @@ def is_webapi_backend(workspace: Workspace) -> bool:
 
 
 @pytest.mark.live
+@pytest.mark.usefixtures("auto_datalab")
 class TestLiveConnection:
     """Test connection to DataLab."""
 
