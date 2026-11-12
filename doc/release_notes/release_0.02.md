@@ -16,7 +16,7 @@
 
 ### 🔧 Other changes since version 0.2.11 ###
 
-* JupyterLite: the documented environment now installs Sigima and DataLab-Kernel from PyPI, with their compiled dependencies from emscripten-forge. The conda-forge Sigima package requires `imagecodecs`, which is not available for WebAssembly, so a Conda-only environment cannot use Sigima 1.4.
+* JupyterLite: the documented environment now installs Sigima and DataLab-Kernel from PyPI, with their compiled dependencies from emscripten-forge. The conda-forge Sigima package requires `imagecodecs`, which emscripten-forge does not provide, so a Conda-only environment cannot use Sigima 1.4.
 * Tests: the live tests started with `--start-datalab` no longer fail with DataLab 1.4 or later, which quit right after starting because it did not get the instruction to stay open.
 
 ## DataLab-Kernel Version 0.2.11 (2026-02-15) ##
